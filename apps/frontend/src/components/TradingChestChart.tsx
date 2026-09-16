@@ -316,10 +316,14 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     let lastToolTapTime = 0
 
     const onClick = (e: Event) => {
-      const now = Date.now()
-      if (now - lastToolTapTime < 300) {
-        // Prevent double firing when both touchend and click fire on mobile tap
-        return
+      const target = e.target as HTMLElement
+
+      const isReplayBarClick = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') !== null
+      if (!isReplayBarClick) {
+        const now = Date.now()
+        if (now - lastToolTapTime < 300) {
+          return
+        }
       }
 
       const target = e.target as HTMLElement
@@ -505,12 +509,9 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         }
 
         const isTouch = 'changedTouches' in upEv
-        const targetToClick = (buttonTarget || startTarget) as HTMLElement | null
 
-        // On touch release, if user tapped a button and did not drag the floating bar card, trigger click action
-        if (isTouch && !isDragging && targetToClick) {
+        if (isTouch && isDragging) {
           if (upEv.cancelable) upEv.preventDefault()
-          targetToClick.click()
         }
 
         isDragging = false
