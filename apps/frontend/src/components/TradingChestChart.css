@@ -103,16 +103,11 @@
 }
 
 .klinecharts-pro-drawing-bar .item .icon-arrow {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  opacity: 1 !important;
-  width: 12px !important;
-  height: 44px !important;
-  flex: 0 0 12px !important;
-  z-index: 10 !important;
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
 }
 
 .klinecharts-pro-drawing-bar .item .icon-arrow svg {

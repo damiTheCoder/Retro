@@ -379,9 +379,8 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         }
         const iconOverlay = itemEl.querySelector('.icon-overlay') || itemEl.querySelector('span:first-child')
         const isAlreadySelected = itemEl.classList.contains('selected') || (iconOverlay && iconOverlay.classList.contains('selected'))
-        const isArrowTap = target.closest('.icon-arrow') !== null
 
-        if (isAlreadySelected && !isArrowTap) {
+        if (isAlreadySelected) {
           // Untap / Deselect active drawing tool
           lastToolTapTime = now
           e.preventDefault()
