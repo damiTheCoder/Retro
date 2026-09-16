@@ -338,13 +338,15 @@
 }
 
 .klinecharts-pro-drawing-bar .item,
-.klinecharts-pro-drawing-bar .item .icon-overlay,
-.klinecharts-pro-drawing-bar .item .icon-arrow,
-.klinecharts-pro-period-bar .item,
+.klinecharts-pro-drawing-bar .item *,
+.klinecharts-pro-period-bar,
+.klinecharts-pro-period-bar *,
 .klinecharts-pro-overlay-property-bar-item,
 .replay-trigger-btn {
   color: #000000 !important;
   fill: #000000 !important;
+  cursor: pointer !important;
+  touch-action: manipulation !important;
 }
 
 .klinecharts-pro-drawing-bar .item svg,
