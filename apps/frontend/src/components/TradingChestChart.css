@@ -62,25 +62,42 @@
   touch-action: manipulation !important;
   pointer-events: auto !important;
   cursor: pointer !important;
-  min-height: 40px !important;
+  min-height: 44px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 2px !important;
+  box-sizing: border-box !important;
+}
+
+.klinecharts-pro-drawing-bar .item .icon-overlay,
+.klinecharts-pro-drawing-bar .item > span:first-child {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  width: 32px !important;
+  height: 32px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
 }
 
-.klinecharts-pro-drawing-bar .item .icon-overlay {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  width: 34px !important;
-  height: 34px !important;
-}
-
 .klinecharts-pro-drawing-bar .item .icon-arrow {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   pointer-events: auto !important;
   cursor: pointer !important;
   opacity: 1 !important;
-  width: 14px !important;
-  height: 34px !important;
+  width: 18px !important;
+  height: 44px !important;
+  z-index: 10 !important;
+}
+
+.klinecharts-pro-drawing-bar .item .icon-arrow svg {
+  width: 8px !important;
+  height: 10px !important;
+  pointer-events: none !important;
 }
 
 /* The flyout menu list for sub-tools: position fixed dynamically updated on click and scroll */
