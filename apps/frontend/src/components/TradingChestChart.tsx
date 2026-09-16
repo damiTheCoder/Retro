@@ -379,53 +379,74 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
   }
 
-  // Draggable Logo Button Position inside chart area
+  // Draggable Logo Button Position inside chart area (Supports Mouse & Mobile Touch)
   const [logoPos, setLogoPos] = useState({ x: 70, y: 56 })
   const [isDragging, setIsDragging] = useState(false)
   const dragStartRef = useRef<{ mouseX: number; mouseY: number; initialX: number; initialY: number } | null>(null)
   const hasDraggedRef = useRef(false)
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleStartDrag = (clientX: number, clientY: number) => {
     setIsDragging(true)
     hasDraggedRef.current = false
     dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
+      mouseX: clientX,
+      mouseY: clientY,
       initialX: logoPos.x,
       initialY: logoPos.y,
     }
   }
 
+  const handleMoveDrag = (clientX: number, clientY: number) => {
+    if (!dragStartRef.current) return
+    const dx = clientX - dragStartRef.current.mouseX
+    const dy = clientY - dragStartRef.current.mouseY
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      hasDraggedRef.current = true
+    }
+    setLogoPos({
+      x: Math.max(10, dragStartRef.current.initialX + dx),
+      y: Math.max(45, dragStartRef.current.initialY + dy),
+    })
+  }
+
+  const handleEndDrag = () => {
+    if (dragStartRef.current) {
+      dragStartRef.current = null
+      setIsDragging(false)
+    }
+  }
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!dragStartRef.current) return
-      const dx = e.clientX - dragStartRef.current.mouseX
-      const dy = e.clientY - dragStartRef.current.mouseY
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        hasDraggedRef.current = true
+      handleMoveDrag(e.clientX, e.clientY)
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches && e.touches[0]) {
+        handleMoveDrag(e.touches[0].clientX, e.touches[0].clientY)
       }
-      setLogoPos({
-        x: Math.max(10, dragStartRef.current.initialX + dx),
-        y: Math.max(45, dragStartRef.current.initialY + dy),
-      })
     }
 
     const handleMouseUp = () => {
-      if (dragStartRef.current) {
-        dragStartRef.current = null
-        setIsDragging(false)
-      }
+      handleEndDrag()
     }
 
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('touchend', handleMouseUp)
+    window.addEventListener('touchcancel', handleMouseUp)
+
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleMouseUp)
+      window.removeEventListener('touchcancel', handleMouseUp)
     }
   }, [])
 
-  const handleLogoClick = (e: React.MouseEvent) => {
+  const handleLogoClick = (e: React.MouseEvent | React.TouchEvent) => {
     if (hasDraggedRef.current) {
       e.preventDefault()
       e.stopPropagation()
@@ -440,7 +461,12 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       <button
         className={`auto-document-logo-btn icon-only ${isDragging ? 'dragging' : ''} ${showOrderPanel ? 'active' : ''}`}
         style={{ left: `${logoPos.x}px`, top: `${logoPos.y}px` }}
-        onMouseDown={handleMouseDown}
+        onMouseDown={(e) => handleStartDrag(e.clientX, e.clientY)}
+        onTouchStart={(e) => {
+          if (e.touches && e.touches[0]) {
+            handleStartDrag(e.touches[0].clientX, e.touches[0].clientY)
+          }
+        }}
         onClick={handleLogoClick}
         title="Execute Trade & Log to Journal (Click to toggle order panel)"
       >

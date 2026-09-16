@@ -685,5 +685,33 @@
   background: #be123c;
 }
 
+/* Full Mobile Touch & Resizing Interaction Support for Chart & Indicator Sub-Panes */
+.tradingchest-container,
+.klinecharts-pro,
+.klinecharts-pro-content,
+.klinecharts-pro-widget,
+.klinecharts-pro-widget canvas,
+.klinecharts-pro-pane-separator,
+.klinecharts-pro-separator,
+[class*="separator"],
+[class*="pane-separator"],
+[class*="resize"] {
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Make sub-pane separator lines easily grabbable and resizable on touch devices */
+.klinecharts-pro-pane-separator,
+.klinecharts-pro-separator,
+[class*="separator"],
+[class*="pane-separator"] {
+  cursor: row-resize !important;
+  min-height: 8px !important;
+  z-index: 100 !important;
+  position: relative !important;
+}
+
 
 
