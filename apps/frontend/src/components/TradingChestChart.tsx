@@ -492,18 +492,15 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const target = e.target as HTMLElement
       const bar = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') as HTMLElement
       
-      const tagStr = target.tagName || 'UNKNOWN'
-      const classStr = typeof target.className === 'string' ? target.className : ''
-      addDebugLog(`Down: <${tagStr} class="${classStr.slice(0, 20)}"> bar:${!!bar}`)
-
-      if (!bar) return
+      const clientX = 'touches' in e && e.touches[0] ? e.touches[0].clientX : (e as MouseEvent).clientX || 0
+      const clientY = 'touches' in e && e.touches[0] ? e.touches[0].clientY : (e as MouseEvent).clientY || 0
 
       const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
       const buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]')
 
-      const btnClass = (buttonTarget as HTMLElement)?.className
-      const btnClassStr = typeof btnClass === 'string' ? btnClass.slice(0, 15) : ''
-      addDebugLog(`Checks: btn:${!!buttonTarget} (${btnClassStr}) isInput:${isInput}`)
+      addDebugLog(`Down: touch=(${Math.round(clientX)},${Math.round(clientY)}) barFound:${!!bar} btnFound:${!!buttonTarget} isInput:${isInput}`)
+
+      if (!bar) return
 
       if (buttonTarget) {
         addDebugLog('Return: buttonTarget hit')
@@ -516,9 +513,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         return
       }
 
-      const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
-      const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY
-
       const rect = bar.getBoundingClientRect()
       startX = clientX
       startY = clientY
@@ -530,19 +524,19 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       addDebugLog(`DragTarget SET: L:${Math.round(initialLeft)} T:${Math.round(initialTop)}`)
 
       const handlePointerMove = (moveEv: MouseEvent | TouchEvent) => {
-        if (!dragTarget) return
-        const currentX = 'touches' in moveEv ? moveEv.touches[0].clientX : (moveEv as MouseEvent).clientX
-        const currentY = 'touches' in moveEv ? moveEv.touches[0].clientY : (moveEv as MouseEvent).clientY
+        const currentX = 'touches' in moveEv && moveEv.touches[0] ? moveEv.touches[0].clientX : (moveEv as MouseEvent).clientX || 0
+        const currentY = 'touches' in moveEv && moveEv.touches[0] ? moveEv.touches[0].clientY : (moveEv as MouseEvent).clientY || 0
 
         const deltaX = currentX - startX
         const deltaY = currentY - startY
 
+        addDebugLog(`Move: touch=(${Math.round(currentX)},${Math.round(currentY)}) start=(${Math.round(startX)},${Math.round(startY)}) delta=(${Math.round(deltaX)},${Math.round(deltaY)}) movedFar:${movedFar} isDrag:${isDragging} target:${!!dragTarget}`)
+
+        if (!dragTarget) return
+
         if (!movedFar && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
           movedFar = true
           isDragging = true
-          addDebugLog(`Move: isDragging=true dx:${Math.round(deltaX)} dy:${Math.round(deltaY)}`)
-        } else if (isDragging) {
-          addDebugLog(`Move: dx:${Math.round(deltaX)} dy:${Math.round(deltaY)}`)
         }
 
         if (isDragging) {
@@ -574,11 +568,20 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         }
 
         const isTouch = 'changedTouches' in upEv
+        const endX = isTouch && upEv.changedTouches[0] ? upEv.changedTouches[0].clientX : (upEv as MouseEvent).clientX || 0
+        const endY = isTouch && upEv.changedTouches[0] ? upEv.changedTouches[0].clientY : (upEv as MouseEvent).clientY || 0
+        const totalDeltaX = endX - startX
+        const totalDeltaY = endY - startY
+
+        if (upEv.type === 'touchcancel') {
+          addDebugLog(`Cancel: touch cancelled`)
+        } else {
+          addDebugLog(`Up: wasDragging:${isDragging} totalDelta=(${Math.round(totalDeltaX)},${Math.round(totalDeltaY)})`)
+        }
+
         if (isTouch && isDragging && upEv.cancelable) {
           upEv.preventDefault()
         }
-
-        addDebugLog(`Up: wasDragging:${isDragging}`)
 
         isDragging = false
         dragTarget = null
@@ -586,16 +589,19 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         window.removeEventListener('mouseup', handlePointerUp)
         window.removeEventListener('touchmove', handlePointerMove)
         window.removeEventListener('touchend', handlePointerUp)
+        window.removeEventListener('touchcancel', handlePointerUp)
       }
 
       window.addEventListener('mousemove', handlePointerMove, { passive: false })
       window.addEventListener('mouseup', handlePointerUp)
       window.addEventListener('touchmove', handlePointerMove, { passive: false })
       window.addEventListener('touchend', handlePointerUp, { passive: false })
+      window.addEventListener('touchcancel', handlePointerUp, { passive: false })
     }
 
     document.addEventListener('mousedown', handlePointerDown)
     document.addEventListener('touchstart', handlePointerDown, { passive: false })
+    document.addEventListener('touchcancel', (e) => addDebugLog(`DocTouchCancel: ${e.type}`))
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown)
