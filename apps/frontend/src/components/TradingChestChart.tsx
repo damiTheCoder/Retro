@@ -430,6 +430,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     let isDragging = false
     let dragTarget: HTMLElement | null = null
     let buttonTarget: HTMLElement | null = null
+    let startTarget: HTMLElement | null = null
     let startX = 0
     let startY = 0
     let initialLeft = 0
@@ -445,6 +446,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
       if (isInput) return
 
+      startTarget = target
       buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]') as HTMLElement | null
 
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
@@ -458,7 +460,8 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       dragTarget = bar
       movedFar = false
 
-      const dragThreshold = buttonTarget ? 8 : 4
+      // On buttons, require 25px of movement before turning on floating card drag so mobile taps are never swallowed
+      const dragThreshold = buttonTarget ? 25 : 4
 
       const handlePointerMove = (moveEv: MouseEvent | TouchEvent) => {
         if (!dragTarget) return
@@ -501,15 +504,19 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
           dragTarget.classList.remove('is-dragging')
         }
 
-        // On mobile touch end, if finger didn't drag far and target was a button, programmatically execute click
-        if ('changedTouches' in upEv && !movedFar && buttonTarget) {
+        const isTouch = 'changedTouches' in upEv
+        const targetToClick = (buttonTarget || startTarget) as HTMLElement | null
+
+        // On touch release, if user tapped a button and did not drag the floating bar card, trigger click action
+        if (isTouch && !isDragging && targetToClick) {
           if (upEv.cancelable) upEv.preventDefault()
-          buttonTarget.click()
+          targetToClick.click()
         }
 
         isDragging = false
         dragTarget = null
         buttonTarget = null
+        startTarget = null
         window.removeEventListener('mousemove', handlePointerMove)
         window.removeEventListener('mouseup', handlePointerUp)
         window.removeEventListener('touchmove', handlePointerMove)
