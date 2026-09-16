@@ -97,59 +97,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   const [positionUnits, setPositionUnits] = useState<number>(1)
   const [tradeNotes, setTradeNotes] = useState<string>('')
 
-  // Desktop-Only Drawing Tools Debug Panel
-  const [debugLogs, setDebugLogs] = useState<string[]>([])
-  const isDesktop = typeof window !== 'undefined' && (window.innerWidth >= 1024 || !('ontouchstart' in window || navigator.maxTouchPoints > 0))
-
-  useEffect(() => {
-    if (!isDesktop) return
-
-    const addLog = (msg: string) => {
-      const timestamp = new Date().toLocaleTimeString() + '.' + String(Date.now() % 1000).padStart(3, '0')
-      setDebugLogs((prev) => [`[${timestamp}] ${msg}`, ...prev.slice(0, 49)])
-    }
-
-    const handleDesktopDebug = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null
-      if (!target) return
-
-      const isDrawingElement = target.closest('.klinecharts-pro-drawing-bar, .klinecharts-pro-period-bar') !== null
-      if (isDrawingElement) {
-        const className = target.className || target.tagName
-        const parentClass = target.parentElement ? target.parentElement.className : ''
-        addLog(`${e.type} | target: <${target.tagName.toLowerCase()} class="${className}"> | parent: <${parentClass}> | defPrev: ${e.defaultPrevented}`)
-      }
-    }
-
-    const capturePreventDefault = (e: Event) => {
-      const target = e.target as HTMLElement | null
-      if (target && target.closest('.klinecharts-pro-drawing-bar, .klinecharts-pro-period-bar')) {
-        const origPrevent = e.preventDefault.bind(e)
-        const origStopProp = e.stopPropagation.bind(e)
-        e.preventDefault = () => {
-          addLog(`preventDefault() on ${e.type} on <${target.tagName.toLowerCase()} class="${target.className}">`)
-          origPrevent()
-        }
-        e.stopPropagation = () => {
-          addLog(`stopPropagation() on ${e.type} on <${target.tagName.toLowerCase()} class="${target.className}">`)
-          origStopProp()
-        }
-      }
-    }
-
-    window.addEventListener('mousedown', capturePreventDefault, { capture: true })
-    window.addEventListener('click', capturePreventDefault, { capture: true })
-    window.addEventListener('mousedown', handleDesktopDebug, { capture: false })
-    window.addEventListener('click', handleDesktopDebug, { capture: false })
-
-    return () => {
-      window.removeEventListener('mousedown', capturePreventDefault, { capture: true } as any)
-      window.removeEventListener('click', capturePreventDefault, { capture: true } as any)
-      window.removeEventListener('mousedown', handleDesktopDebug)
-      window.removeEventListener('click', handleDesktopDebug)
-    }
-  }, [isDesktop])
-
   // Sync default prices when symbol changes
   useEffect(() => {
     const baseP = getDefaultSymbolPrice(currentSymbolTicker)
@@ -1110,43 +1057,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       {loading && <div className="tradingchest-loading">Loading...</div>}
       {error && <div className="tradingchest-error">{error}</div>}
 
-      {/* Desktop Debug Log Panel */}
-      {isDesktop && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '10px',
-            right: '10px',
-            width: '420px',
-            maxHeight: '260px',
-            backgroundColor: '#0a0a0a',
-            color: '#00ff66',
-            border: '2px solid #00ff66',
-            borderRadius: '8px',
-            padding: '10px',
-            fontSize: '11px',
-            fontFamily: 'monospace',
-            zIndex: 9999999,
-            overflowY: 'auto',
-            boxShadow: '0 4px 20px rgba(0,255,102,0.3)',
-            pointerEvents: 'auto',
-          }}
-        >
-          <div style={{ fontWeight: 'bold', borderBottom: '1px solid #00ff66', paddingBottom: '4px', marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
-            <span>🖥️ DESKTOP DRAWING TOOL DEBUG PANEL</span>
-            <button onClick={() => setDebugLogs([])} style={{ background: '#222', color: '#fff', border: '1px solid #444', borderRadius: '3px', cursor: 'pointer', fontSize: '10px' }}>Clear</button>
-          </div>
-          {debugLogs.length === 0 ? (
-            <div style={{ color: '#888' }}>Click any sidebar/top drawing tool on desktop to log events...</div>
-          ) : (
-            debugLogs.map((log, idx) => (
-              <div key={idx} style={{ marginBottom: '3px', wordBreak: 'break-all' }}>
-                {log}
-              </div>
-            ))
-          )}
-        </div>
-      )}
     </div>
   )
 }
