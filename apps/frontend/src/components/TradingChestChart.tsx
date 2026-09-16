@@ -545,6 +545,106 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
   }, [])
 
+  // Universal Mobile Touch-to-Mouse Proxy for All Chart Canvas Interactions
+  // (Chart Panning, Drawing Overlay Handles, Axis Resizing, Shapes & Control Points)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    let activeTouchId: number | null = null
+    let isTouchActive = false
+    let touchStartTarget: Element | null = null
+    let touchStartX = 0
+    let touchStartY = 0
+
+    const createMouseEvent = (type: string, touch: Touch, target: Element) => {
+      return new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        detail: 1,
+        screenX: touch.screenX,
+        screenY: touch.screenY,
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        metaKey: false,
+        button: 0,
+        buttons: 1,
+        relatedTarget: null,
+      })
+    }
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
+
+      const touch = e.touches[0]
+      const target = document.elementFromPoint(touch.clientX, touch.clientY)
+      if (!target || !container.contains(target)) return
+
+      const isInteractiveUI = target.closest(
+        'button, input, select, a, .klinecharts-pro-replay-bar, .replay-top-bar, .auto-document-logo-btn, .klinecharts-pro-period-bar, .klinecharts-pro-drawing-bar, .klinecharts-pro-modal, .klinecharts-pro-overlay-property-bar'
+      )
+      if (isInteractiveUI) return
+
+      activeTouchId = touch.identifier
+      isTouchActive = true
+      touchStartTarget = target
+      touchStartX = touch.clientX
+      touchStartY = touch.clientY
+
+      const mouseEv = createMouseEvent('mousedown', touch, target)
+      target.dispatchEvent(mouseEv)
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isTouchActive || activeTouchId === null || !touchStartTarget) return
+      const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchId)
+      if (!touch) return
+
+      if (e.cancelable) e.preventDefault()
+
+      const mouseEv = createMouseEvent('mousemove', touch, touchStartTarget)
+      touchStartTarget.dispatchEvent(mouseEv)
+      window.dispatchEvent(mouseEv)
+    }
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!isTouchActive || activeTouchId === null || !touchStartTarget) return
+      const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchId)
+      if (!touch) return
+
+      const mouseEv = createMouseEvent('mouseup', touch, touchStartTarget)
+      touchStartTarget.dispatchEvent(mouseEv)
+      window.dispatchEvent(mouseEv)
+
+      const deltaX = Math.abs(touch.clientX - touchStartX)
+      const deltaY = Math.abs(touch.clientY - touchStartY)
+      if (deltaX < 5 && deltaY < 5) {
+        const clickEv = createMouseEvent('click', touch, touchStartTarget)
+        touchStartTarget.dispatchEvent(clickEv)
+      }
+
+      activeTouchId = null
+      isTouchActive = false
+      touchStartTarget = null
+    }
+
+    container.addEventListener('touchstart', onTouchStart, { passive: false })
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchend', onTouchEnd)
+    window.addEventListener('touchcancel', onTouchEnd)
+
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [])
+
   // Calculate Real-Time Trade Metrics for Order Execution
   const calculatedMetrics = useMemo(() => {
     const isLong = tradeDirection === 'LONG'
