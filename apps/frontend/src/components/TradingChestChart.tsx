@@ -384,9 +384,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         }
 
         lastToolTapTime = now
-        if (typeof itemEl.focus === 'function') {
-          itemEl.focus()
-        }
         requestAnimationFrame(handleUpdateDropdownPositions)
         setTimeout(handleUpdateDropdownPositions, 30)
         setTimeout(handleUpdateDropdownPositions, 100)
