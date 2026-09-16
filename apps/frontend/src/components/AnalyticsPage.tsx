@@ -238,7 +238,9 @@ export function AnalyticsPage() {
           </button>
 
           {isDropdownOpen && (
-            <div className="date-dropdown-popover">
+            <>
+              <div className="dropdown-backdrop-overlay" onClick={() => setIsDropdownOpen(false)} />
+              <div className="date-dropdown-popover">
               {/* Presets Row */}
               <div className="popover-section">
                 <div className="popover-section-label">Quick Presets</div>
@@ -342,7 +344,8 @@ export function AnalyticsPage() {
                 </div>
               )}
             </div>
-          )}
+          </>
+        )}
         </div>
       </header>
 
