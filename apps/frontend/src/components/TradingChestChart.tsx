@@ -352,6 +352,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       }
 
       if (itemEl) {
+        itemEl.focus()
         const iconOverlay = itemEl.querySelector('.icon-overlay') || itemEl.querySelector('span:first-child')
         const isAlreadySelected = itemEl.classList.contains('selected') || (iconOverlay && iconOverlay.classList.contains('selected'))
         const isArrowTap = target.closest('.icon-arrow') !== null
@@ -390,18 +391,40 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         setTimeout(handleUpdateDropdownPositions, 250)
       }
     }
+
+    const onDrawingBarTouchEnd = (e: TouchEvent) => {
+      const target = e.target as HTMLElement
+      const itemEl = target.closest('.klinecharts-pro-drawing-bar .item') as HTMLElement | null
+      const listLiEl = target.closest('.klinecharts-pro-drawing-bar .item .list li') as HTMLElement | null
+
+      if (listLiEl) {
+        listLiEl.click()
+        requestAnimationFrame(handleUpdateDropdownPositions)
+        return
+      }
+
+      if (itemEl) {
+        itemEl.focus()
+        requestAnimationFrame(handleUpdateDropdownPositions)
+        setTimeout(handleUpdateDropdownPositions, 50)
+        setTimeout(handleUpdateDropdownPositions, 150)
+      }
+    }
+
     const onScroll = () => {
       handleUpdateDropdownPositions()
     }
 
     if (containerEl) {
       containerEl.addEventListener('click', onClick)
+      containerEl.addEventListener('touchend', onDrawingBarTouchEnd, { passive: true })
       containerEl.addEventListener('scroll', onScroll, { capture: true, passive: true })
     }
 
     return () => {
       if (containerEl) {
         containerEl.removeEventListener('click', onClick)
+        containerEl.removeEventListener('touchend', onDrawingBarTouchEnd)
         containerEl.removeEventListener('scroll', onScroll, { capture: true } as any)
       }
       if (activeWsRef.current) {
@@ -428,8 +451,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   useEffect(() => {
     let isDragging = false
     let dragTarget: HTMLElement | null = null
-    let buttonTarget: HTMLElement | null = null
-    let startTarget: HTMLElement | null = null
     let startX = 0
     let startY = 0
     let initialLeft = 0
@@ -441,12 +462,10 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const bar = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') as HTMLElement
       if (!bar) return
 
-      // Don't hijack input range slider immediately unless dragging occurs outside it
+      // Don't hijack input range slider or buttons so native touch taps work 100%
       const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
-      if (isInput) return
-
-      startTarget = target
-      buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]') as HTMLElement | null
+      const buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]')
+      if (isInput || buttonTarget) return
 
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
       const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY
@@ -459,9 +478,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       dragTarget = bar
       movedFar = false
 
-      // On buttons, require 25px of movement before turning on floating card drag so mobile taps are never swallowed
-      const dragThreshold = buttonTarget ? 25 : 4
-
       const handlePointerMove = (moveEv: MouseEvent | TouchEvent) => {
         if (!dragTarget) return
         const currentX = 'touches' in moveEv ? moveEv.touches[0].clientX : (moveEv as MouseEvent).clientX
@@ -470,7 +486,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         const deltaX = currentX - startX
         const deltaY = currentY - startY
 
-        if (!movedFar && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
+        if (!movedFar && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
           movedFar = true
           isDragging = true
         }
@@ -504,15 +520,12 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         }
 
         const isTouch = 'changedTouches' in upEv
-
-        if (isTouch && isDragging) {
-          if (upEv.cancelable) upEv.preventDefault()
+        if (isTouch && isDragging && upEv.cancelable) {
+          upEv.preventDefault()
         }
 
         isDragging = false
         dragTarget = null
-        buttonTarget = null
-        startTarget = null
         window.removeEventListener('mousemove', handlePointerMove)
         window.removeEventListener('mouseup', handlePointerUp)
         window.removeEventListener('touchmove', handlePointerMove)
