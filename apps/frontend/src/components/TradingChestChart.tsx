@@ -588,6 +588,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         if (e.cancelable) e.preventDefault()
         const mouseEv = createMouseEvent('mousedown', touch, target)
         target.dispatchEvent(mouseEv)
+        document.dispatchEvent(mouseEv)
       }
     }
 
@@ -669,7 +670,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       if (!target || !container.contains(target)) return
 
       const isInteractiveUI = target.closest(
-        'button, input, select, a, .klinecharts-pro-replay-bar, .replay-top-bar, .auto-document-logo-btn, .klinecharts-pro-period-bar, .klinecharts-pro-drawing-bar, .klinecharts-pro-modal, .klinecharts-pro-overlay-property-bar'
+        'button, input, select, a, .klinecharts-pro-replay-bar, .replay-top-bar, .auto-document-logo-btn, .klinecharts-pro-period-bar, .klinecharts-pro-drawing-bar, .klinecharts-pro-modal, .klinecharts-pro-overlay-property-bar, .klinecharts-pro-pane-separator, .klinecharts-pro-separator, [class*="pane-separator"], [class*="separator"]'
       )
       if (isInteractiveUI) return
 
