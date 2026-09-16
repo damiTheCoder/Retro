@@ -317,16 +317,14 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
     const onClick = (e: Event) => {
       const target = e.target as HTMLElement
+      const now = Date.now()
 
       const isReplayBarClick = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') !== null
       if (!isReplayBarClick) {
-        const now = Date.now()
         if (now - lastToolTapTime < 300) {
           return
         }
       }
-
-      const target = e.target as HTMLElement
 
       // 1. Delete overlay on Trash icon tap/click
       const dangerBtn = target.closest('.klinecharts-pro-overlay-property-bar-item.danger, .danger') as HTMLElement
