@@ -615,13 +615,12 @@
     padding: 6px 8px !important;
     gap: 4px !important;
     flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+    overflow: visible !important;
   }
 
   .klinecharts-pro-replay-bar .replay-progress input[type=range] {
-    width: 90px !important;
-    height: 28px !important;
+    width: 100px !important;
+    height: 8px !important;
     touch-action: pan-x !important;
   }
 }
