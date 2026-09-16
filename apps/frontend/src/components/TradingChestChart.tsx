@@ -397,14 +397,12 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
     if (containerEl) {
       containerEl.addEventListener('click', onClick)
-      containerEl.addEventListener('touchend', onClick, { passive: true })
       containerEl.addEventListener('scroll', onScroll, { capture: true, passive: true })
     }
 
     return () => {
       if (containerEl) {
         containerEl.removeEventListener('click', onClick)
-        containerEl.removeEventListener('touchend', onClick)
         containerEl.removeEventListener('scroll', onScroll, { capture: true } as any)
       }
       if (activeWsRef.current) {
