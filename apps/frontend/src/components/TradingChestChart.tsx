@@ -447,6 +447,101 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
   }, [])
 
+  // Enable Sub-Pane (Volume Indicator) Resizing via Touch on Mobile Devices
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    let activeTouchId: number | null = null
+    let isSeparatorTouch = false
+
+    const createMouseEvent = (type: string, touch: Touch, target: Element) => {
+      return new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        detail: 1,
+        screenX: touch.screenX,
+        screenY: touch.screenY,
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        metaKey: false,
+        button: 0,
+        buttons: 1,
+        relatedTarget: null,
+      })
+    }
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
+      const touch = e.touches[0]
+      const target = document.elementFromPoint(touch.clientX, touch.clientY)
+      if (!target || !container.contains(target)) return
+
+      const isSeparator = target.classList.contains('klinecharts-pro-pane-separator') ||
+                          target.classList.contains('klinecharts-pro-separator') ||
+                          target.closest('[class*="separator"]') !== null ||
+                          target.closest('[class*="pane-separator"]') !== null
+
+      const computedCursor = window.getComputedStyle(target).cursor
+      const isRowResize = computedCursor.includes('resize') || computedCursor === 'row-resize' || computedCursor === 'ns-resize'
+
+      const rect = container.getBoundingClientRect()
+      const relY = touch.clientY - rect.top
+      const heightRatio = relY / rect.height
+      const isNearPaneBoundary = isSeparator || isRowResize || (heightRatio > 0.50 && heightRatio < 0.92)
+
+      if (isNearPaneBoundary) {
+        activeTouchId = touch.identifier
+        isSeparatorTouch = true
+
+        if (e.cancelable) e.preventDefault()
+        const mouseEv = createMouseEvent('mousedown', touch, target)
+        target.dispatchEvent(mouseEv)
+      }
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isSeparatorTouch || activeTouchId === null) return
+      const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchId)
+      if (!touch) return
+
+      if (e.cancelable) e.preventDefault()
+
+      const mouseEv = createMouseEvent('mousemove', touch, window.document.body)
+      window.dispatchEvent(mouseEv)
+      document.dispatchEvent(mouseEv)
+    }
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!isSeparatorTouch || activeTouchId === null) return
+      const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchId)
+      if (!touch) return
+
+      const mouseEv = createMouseEvent('mouseup', touch, window.document.body)
+      window.dispatchEvent(mouseEv)
+      document.dispatchEvent(mouseEv)
+
+      activeTouchId = null
+      isSeparatorTouch = false
+    }
+
+    container.addEventListener('touchstart', onTouchStart, { passive: false })
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchend', onTouchEnd)
+    window.addEventListener('touchcancel', onTouchEnd)
+
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [])
+
   // Calculate Real-Time Trade Metrics for Order Execution
   const calculatedMetrics = useMemo(() => {
     const isLong = tradeDirection === 'LONG'
