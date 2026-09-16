@@ -331,10 +331,19 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       }
     }
 
+    let lastSolidClickTime = 0
+    let lastSolidClickTarget: any = null
+
     const triggerSolidClick = (target: HTMLElement | Element | null, e?: Event) => {
+      const now = Date.now()
       let curr: any = target
       while (curr && curr !== document && curr !== document.body) {
         if (typeof curr.$$click === 'function') {
+          if (now - lastSolidClickTime < 350 && (curr === lastSolidClickTarget || (lastSolidClickTarget && curr.contains(lastSolidClickTarget)))) {
+            return true
+          }
+          lastSolidClickTime = now
+          lastSolidClickTarget = curr
           try {
             curr.$$click(e || new MouseEvent('click', { bubbles: true, cancelable: true }))
           } catch (err) {
