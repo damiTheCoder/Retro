@@ -15,6 +15,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+  position: relative;
+  z-index: 100;
 }
 
 .page-title {
@@ -77,19 +79,19 @@
 .date-dropdown-popover {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
-  left: auto;
-  width: 350px;
+  right: 0 !important;
+  left: auto !important;
+  width: 290px;
   max-width: calc(100vw - 32px);
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  padding: 16px;
+  padding: 14px;
   box-shadow: 0 14px 40px rgba(15, 23, 42, 0.18);
   z-index: 999999;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   animation: popoverFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -707,9 +709,9 @@
   }
 
   .date-dropdown-popover {
-    left: 0;
-    right: auto;
-    width: 290px;
+    right: 0 !important;
+    left: auto !important;
+    width: 280px;
     max-width: calc(100vw - 32px);
     padding: 12px;
   }
