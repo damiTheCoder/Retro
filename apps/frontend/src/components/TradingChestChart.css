@@ -144,8 +144,8 @@
 .klinecharts-pro-period-bar,
 .klinecharts-pro-widget [class*="legend"],
 .klinecharts-pro-widget [class*="tooltip"],
-[class*="klinecharts-pro"] [class*="legend"],
-[class*="klinecharts-pro"] [class*="tooltip"],
+[class*="klinecharts"] [class*="legend"],
+[class*="klinecharts"] [class*="tooltip"],
 [class*="candle-legend"],
 [class*="indicator-legend"],
 [class*="chart-legend"] {
@@ -162,26 +162,45 @@
   -ms-overflow-style: none !important;
 }
 
-.klinecharts-pro-header::-webkit-scrollbar,
-.klinecharts-pro-period-bar::-webkit-scrollbar,
-.klinecharts-pro-widget [class*="legend"]::-webkit-scrollbar,
-.klinecharts-pro-widget [class*="tooltip"]::-webkit-scrollbar,
-[class*="klinecharts-pro"] [class*="legend"]::-webkit-scrollbar,
-[class*="klinecharts-pro"] [class*="tooltip"]::-webkit-scrollbar,
-[class*="candle-legend"]::-webkit-scrollbar,
-[class*="indicator-legend"]::-webkit-scrollbar,
-[class*="chart-legend"]::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+.klinecharts-pro-widget [class*="legend"] > div,
+.klinecharts-pro-widget [class*="tooltip"] > div,
+[class*="klinecharts"] [class*="legend"] > div,
+[class*="klinecharts"] [class*="tooltip"] > div,
+[class*="candle-legend"] > div,
+[class*="indicator-legend"] > div {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  flex-shrink: 0 !important;
 }
 
 .klinecharts-pro-widget [class*="legend"] *,
 .klinecharts-pro-widget [class*="tooltip"] *,
-[class*="klinecharts-pro"] [class*="legend"] *,
-[class*="klinecharts-pro"] [class*="tooltip"] * {
+[class*="klinecharts"] [class*="legend"] *,
+[class*="klinecharts"] [class*="tooltip"] *,
+[class*="candle-legend"] *,
+[class*="indicator-legend"] * {
   white-space: nowrap !important;
+  flex-wrap: nowrap !important;
   flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  float: none !important;
+}
+
+.klinecharts-pro-header::-webkit-scrollbar,
+.klinecharts-pro-period-bar::-webkit-scrollbar,
+.klinecharts-pro-widget::-webkit-scrollbar,
+.klinecharts-pro-widget *::-webkit-scrollbar,
+[class*="klinecharts"]::-webkit-scrollbar,
+[class*="klinecharts"] *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .klinecharts-pro-period-bar .menu-container,
