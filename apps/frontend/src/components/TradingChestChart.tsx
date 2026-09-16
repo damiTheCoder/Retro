@@ -331,11 +331,28 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       }
     }
 
+    const triggerSolidClick = (target: HTMLElement | Element | null, e?: Event) => {
+      let curr: any = target
+      while (curr && curr !== document && curr !== document.body) {
+        if (typeof curr.$$click === 'function') {
+          try {
+            curr.$$click(e || new MouseEvent('click', { bubbles: true, cancelable: true }))
+          } catch (err) {
+            console.error('$$click error:', err)
+          }
+          return true
+        }
+        curr = curr.parentNode || curr.host
+      }
+      return false
+    }
+
     let lastToolTapTime = 0
 
     const onClick = (e: Event) => {
       const target = e.target as HTMLElement
       logTouchDebug('click', target, e.defaultPrevented)
+      triggerSolidClick(target, e)
       const now = Date.now()
 
       const isReplayBarClick = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') !== null
@@ -417,10 +434,12 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     const onDrawingBarTouchEnd = (e: TouchEvent) => {
       const target = e.target as HTMLElement
       logTouchDebug('sidebar:touchend', target, e.defaultPrevented)
+      triggerSolidClick(target, e)
       const itemEl = target.closest('.klinecharts-pro-drawing-bar .item') as HTMLElement | null
       const listLiEl = target.closest('.klinecharts-pro-drawing-bar .item .list li') as HTMLElement | null
 
       if (listLiEl) {
+        listLiEl.click()
         requestAnimationFrame(handleUpdateDropdownPositions)
         return
       }
@@ -498,6 +517,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       }
 
       if (buttonTarget) {
+        triggerSolidClick(target, e)
         return
       }
 
