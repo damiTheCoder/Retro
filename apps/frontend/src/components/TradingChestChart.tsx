@@ -84,12 +84,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   const [error, setError] = useState<string | null>(null)
   const [stockErrorMessage, setStockErrorMessage] = useState<string | null>(null)
 
-  // Debug logs for replay drag
-  const [debugLogs, setDebugLogs] = useState<string[]>([])
-  const addDebugLog = (msg: string) => {
-    const time = new Date().toISOString().split('T')[1].slice(0, 8)
-    setDebugLogs((prev) => [`[${time}] ${msg}`, ...prev].slice(0, 10))
-  }
+
 
   // Symbol & Replay State
   const [currentSymbolTicker, setCurrentSymbolTicker] = useState('BTCUSDT')
@@ -491,27 +486,20 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement
       const bar = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') as HTMLElement
-      
-      const clientX = 'touches' in e && e.touches[0] ? e.touches[0].clientX : (e as MouseEvent).clientX || 0
-      const clientY = 'touches' in e && e.touches[0] ? e.touches[0].clientY : (e as MouseEvent).clientY || 0
+      if (!bar) return
 
       const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
       const buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]')
 
-      addDebugLog(`Down: touch=(${Math.round(clientX)},${Math.round(clientY)}) barFound:${!!bar} btnFound:${!!buttonTarget} isInput:${isInput}`)
-
-      if (!bar) return
-
       if (buttonTarget) {
-        addDebugLog('Return: buttonTarget hit')
         triggerSolidClick(target, e)
         return
       }
 
-      if (isInput) {
-        addDebugLog('Return: isInput hit')
-        return
-      }
+      if (isInput) return
+
+      const clientX = 'touches' in e && e.touches[0] ? e.touches[0].clientX : (e as MouseEvent).clientX || 0
+      const clientY = 'touches' in e && e.touches[0] ? e.touches[0].clientY : (e as MouseEvent).clientY || 0
 
       const rect = bar.getBoundingClientRect()
       startX = clientX
@@ -521,18 +509,14 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       dragTarget = bar
       movedFar = false
 
-      addDebugLog(`DragTarget SET: L:${Math.round(initialLeft)} T:${Math.round(initialTop)}`)
-
       const handlePointerMove = (moveEv: MouseEvent | TouchEvent) => {
+        if (!dragTarget || (moveEv.target as HTMLElement)?.tagName === 'INPUT') return
+
         const currentX = 'touches' in moveEv && moveEv.touches[0] ? moveEv.touches[0].clientX : (moveEv as MouseEvent).clientX || 0
         const currentY = 'touches' in moveEv && moveEv.touches[0] ? moveEv.touches[0].clientY : (moveEv as MouseEvent).clientY || 0
 
         const deltaX = currentX - startX
         const deltaY = currentY - startY
-
-        addDebugLog(`Move: touch=(${Math.round(currentX)},${Math.round(currentY)}) start=(${Math.round(startX)},${Math.round(startY)}) delta=(${Math.round(deltaX)},${Math.round(deltaY)}) movedFar:${movedFar} isDrag:${isDragging} target:${!!dragTarget}`)
-
-        if (!dragTarget || (moveEv.target as HTMLElement)?.tagName === 'INPUT') return
 
         if (!movedFar && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
           movedFar = true
@@ -568,17 +552,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         }
 
         const isTouch = 'changedTouches' in upEv
-        const endX = isTouch && upEv.changedTouches[0] ? upEv.changedTouches[0].clientX : (upEv as MouseEvent).clientX || 0
-        const endY = isTouch && upEv.changedTouches[0] ? upEv.changedTouches[0].clientY : (upEv as MouseEvent).clientY || 0
-        const totalDeltaX = endX - startX
-        const totalDeltaY = endY - startY
-
-        if (upEv.type === 'touchcancel') {
-          addDebugLog(`Cancel: touch cancelled`)
-        } else {
-          addDebugLog(`Up: wasDragging:${isDragging} totalDelta=(${Math.round(totalDeltaX)},${Math.round(totalDeltaY)})`)
-        }
-
         if (isTouch && isDragging && upEv.cancelable) {
           upEv.preventDefault()
         }
@@ -601,7 +574,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
     document.addEventListener('mousedown', handlePointerDown)
     document.addEventListener('touchstart', handlePointerDown, { passive: false })
-    document.addEventListener('touchcancel', (e) => addDebugLog(`DocTouchCancel: ${e.type}`))
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown)
@@ -949,38 +921,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
   return (
     <div className="tradingchest-wrapper">
-      {/* Replay Console Debug Panel */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '10px',
-          left: '10px',
-          zIndex: 9999999,
-          background: 'rgba(0, 0, 0, 0.85)',
-          color: '#00ff66',
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          padding: '8px 10px',
-          borderRadius: '6px',
-          pointerEvents: 'none',
-          maxWidth: '320px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
-          lineHeight: '1.4'
-        }}
-      >
-        <div style={{ fontWeight: 'bold', color: '#ffffff', marginBottom: '4px', borderBottom: '1px solid #444', paddingBottom: '2px' }}>
-          🐛 Replay Drag Debug Log
-        </div>
-        {debugLogs.length === 0 ? (
-          <div style={{ color: '#888' }}>No touch/drag events captured yet.</div>
-        ) : (
-          debugLogs.map((log, i) => (
-            <div key={i} style={{ wordBreak: 'break-all' }}>
-              {log}
-            </div>
-          ))
-        )}
-      </div>
+
 
       {/* Draggable Icon-Only Green Logo Button inside chart area */}
       <button
