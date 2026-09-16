@@ -313,12 +313,21 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       })
     }
 
+    let lastToolTapTime = 0
+
     const onClick = (e: Event) => {
+      const now = Date.now()
+      if (now - lastToolTapTime < 300) {
+        // Prevent double firing when both touchend and click fire on mobile tap
+        return
+      }
+
       const target = e.target as HTMLElement
 
       // 1. Delete overlay on Trash icon tap/click
       const dangerBtn = target.closest('.klinecharts-pro-overlay-property-bar-item.danger, .danger') as HTMLElement
       if (dangerBtn) {
+        lastToolTapTime = now
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', keyCode: 46, code: 'Delete', bubbles: true }))
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, code: 'Backspace', bubbles: true }))
         if (chartRef.current) {
@@ -332,24 +341,47 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
       // 2. Sidebar drawing bar tool tap and untap deselect handler
       const itemEl = target.closest('.klinecharts-pro-drawing-bar .item') as HTMLElement
-      if (itemEl) {
-        const iconOverlay = itemEl.querySelector('.icon-overlay')
-        const isAlreadySelected = (iconOverlay && iconOverlay.classList.contains('selected')) || itemEl.classList.contains('selected')
+      const listLiEl = target.closest('.klinecharts-pro-drawing-bar .item .list li') as HTMLElement
 
-        if (isAlreadySelected) {
+      if (listLiEl) {
+        lastToolTapTime = now
+        requestAnimationFrame(handleUpdateDropdownPositions)
+        return
+      }
+
+      if (itemEl) {
+        const iconOverlay = itemEl.querySelector('.icon-overlay') || itemEl.querySelector('span:first-child')
+        const isAlreadySelected = itemEl.classList.contains('selected') || (iconOverlay && iconOverlay.classList.contains('selected'))
+        const isArrowTap = target.closest('.icon-arrow') !== null
+
+        if (isAlreadySelected && !isArrowTap) {
           // Untap / Deselect active drawing tool
+          lastToolTapTime = now
+          e.preventDefault()
+          e.stopPropagation()
+
+          if (containerEl) {
+            const allSelected = containerEl.querySelectorAll('.klinecharts-pro-drawing-bar .selected')
+            allSelected.forEach(el => el.classList.remove('selected'))
+          }
+
           window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, code: 'Escape', bubbles: true }))
-          if (iconOverlay) iconOverlay.classList.remove('selected')
-          itemEl.classList.remove('selected')
+
           if (chartRef.current) {
             const chartWidget = (chartRef.current as any).getChart?.() || (chartRef.current as any)
-            if (chartWidget && typeof chartWidget.overrideOverlay === 'function') {
-              chartWidget.overrideOverlay({ id: null, name: null })
+            if (chartWidget) {
+              if (typeof chartWidget.overrideOverlay === 'function') {
+                chartWidget.overrideOverlay({ id: null, name: null })
+              }
+              if (typeof chartWidget.createOverlay === 'function') {
+                chartWidget.createOverlay(null)
+              }
             }
           }
           return
         }
 
+        lastToolTapTime = now
         if (typeof itemEl.focus === 'function') {
           itemEl.focus()
         }
