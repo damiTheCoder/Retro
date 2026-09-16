@@ -212,7 +212,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       drawingBarVisible: true,
       timezone: 'Etc/UTC',
       mainIndicators: [],
-      subIndicators: ['VOL'],
+      subIndicators: [],
       datafeed,
     })
 
