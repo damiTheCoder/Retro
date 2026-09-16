@@ -86,13 +86,13 @@
   background: transparent;
 }
 
-/* Date Dropdown Popover Menu - Positioned to Right on Desktop and shifted inward */
+/* Date Dropdown Popover Menu - Shifted to Right for Desktop View */
 .date-dropdown-popover {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0 !important;
-  left: auto !important;
-  transform: translateX(-14px);
+  left: 0 !important;
+  right: auto !important;
+  transform: none !important;
   width: 280px;
   max-width: calc(100vw - 32px);
   background: #ffffff;
