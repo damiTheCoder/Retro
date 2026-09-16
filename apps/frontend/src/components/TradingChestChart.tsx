@@ -313,11 +313,12 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       })
     }
 
-    const onClick = (e: MouseEvent) => {
+    const onClick = (e: Event) => {
       const target = e.target as HTMLElement
-      if (target.closest('.klinecharts-pro-drawing-bar .item')) {
+      if (target.closest('.klinecharts-pro-drawing-bar .item, .klinecharts-pro-drawing-bar .list li')) {
         requestAnimationFrame(handleUpdateDropdownPositions)
         setTimeout(handleUpdateDropdownPositions, 50)
+        setTimeout(handleUpdateDropdownPositions, 150)
       }
     }
     const onScroll = () => {
@@ -326,12 +327,14 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
     if (containerEl) {
       containerEl.addEventListener('click', onClick)
+      containerEl.addEventListener('touchend', onClick, { passive: true })
       containerEl.addEventListener('scroll', onScroll, { capture: true, passive: true })
     }
 
     return () => {
       if (containerEl) {
         containerEl.removeEventListener('click', onClick)
+        containerEl.removeEventListener('touchend', onClick)
         containerEl.removeEventListener('scroll', onScroll, { capture: true } as any)
       }
       if (activeWsRef.current) {

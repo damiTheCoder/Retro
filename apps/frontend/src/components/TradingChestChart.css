@@ -49,15 +49,46 @@
   height: 0 !important;
 }
 
+.klinecharts-pro-drawing-bar,
+.klinecharts-pro-drawing-bar * {
+  touch-action: manipulation !important;
+  pointer-events: auto !important;
+  -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2) !important;
+}
+
 .klinecharts-pro-drawing-bar .item {
   position: relative !important;
   z-index: 1000 !important;
+  touch-action: manipulation !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  min-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.klinecharts-pro-drawing-bar .item .icon-overlay {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.klinecharts-pro-drawing-bar .item .icon-arrow {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  opacity: 1 !important;
+  width: 14px !important;
+  height: 34px !important;
 }
 
 /* The flyout menu list for sub-tools: position fixed dynamically updated on click and scroll */
 .klinecharts-pro-drawing-bar .item .list {
   position: fixed !important;
   z-index: 99999999 !important;
+  pointer-events: auto !important;
+  touch-action: pan-y !important;
   background: #f3f4f6 !important;
   background-color: #f3f4f6 !important;
   border: none !important;
@@ -73,9 +104,11 @@
 .klinecharts-pro-drawing-bar .item .list li {
   display: flex !important;
   align-items: center !important;
-  height: 36px !important;
+  height: 44px !important;
   padding: 0 16px !important;
   cursor: pointer !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
   color: #000000 !important;
   background-color: transparent !important;
   font-size: 13px !important;
@@ -83,7 +116,8 @@
   transition: background-color 0.15s ease !important;
 }
 
-.klinecharts-pro-drawing-bar .item .list li:hover {
+.klinecharts-pro-drawing-bar .item .list li:hover,
+.klinecharts-pro-drawing-bar .item .list li:active {
   background-color: #e5e7eb !important;
   color: #000000 !important;
 }
