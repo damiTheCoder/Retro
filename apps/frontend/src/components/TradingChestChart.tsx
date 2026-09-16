@@ -223,6 +223,36 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         tooltip: {
           showRule: TooltipShowRule.None,
         },
+        candle: {
+          tooltip: {
+            showRule: TooltipShowRule.Always,
+            showType: 'standard',
+            custom: (data: any) => {
+              const kLineData = data?.current?.kLineData || data?.current || data
+              if (!kLineData || !kLineData.timestamp) return []
+              const d = new Date(kLineData.timestamp)
+              const yr = d.getFullYear()
+              const mo = String(d.getMonth() + 1).padStart(2, '0')
+              const da = String(d.getDate()).padStart(2, '0')
+              const dateStr = `${yr}-${mo}-${da}`
+
+              const fmt = (v: any) => {
+                if (typeof v !== 'number' || isNaN(v)) return '0'
+                if (v >= 1000) return v.toLocaleString('en-US', { maximumFractionDigits: 2 })
+                return v.toFixed(2)
+              }
+
+              return [
+                { title: 'T: ', value: dateStr },
+                { title: 'O: ', value: fmt(kLineData.open) },
+                { title: 'H: ', value: fmt(kLineData.high) },
+                { title: 'L: ', value: fmt(kLineData.low) },
+                { title: 'C: ', value: fmt(kLineData.close) },
+                { title: 'V: ', value: fmt(kLineData.volume) },
+              ]
+            },
+          },
+        },
         yAxis: {
           axisLine: {
             show: false,
