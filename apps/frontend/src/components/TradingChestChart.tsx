@@ -388,7 +388,10 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       }
 
       if (itemEl) {
-        itemEl.focus()
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+        if (isTouchDevice) {
+          itemEl.focus()
+        }
         const iconOverlay = itemEl.querySelector('.icon-overlay') || itemEl.querySelector('span:first-child')
         const isAlreadySelected = itemEl.classList.contains('selected') || (iconOverlay && iconOverlay.classList.contains('selected'))
         const isArrowTap = target.closest('.icon-arrow') !== null

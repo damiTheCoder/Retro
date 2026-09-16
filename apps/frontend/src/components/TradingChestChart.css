@@ -440,9 +440,13 @@
   color: #0f172a !important;
   border: none !important;
   border-radius: 12px !important;
-  box-shadow: none !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
+  position: fixed !important;
+  bottom: 30px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
   z-index: 999999 !important;
   touch-action: none !important;
   -webkit-touch-callout: none !important;
