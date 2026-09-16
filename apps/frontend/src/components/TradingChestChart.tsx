@@ -429,6 +429,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   useEffect(() => {
     let isDragging = false
     let dragTarget: HTMLElement | null = null
+    let buttonTarget: HTMLElement | null = null
     let startX = 0
     let startY = 0
     let initialLeft = 0
@@ -444,6 +445,8 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
       if (isInput) return
 
+      buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]') as HTMLElement | null
+
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
       const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY
 
@@ -455,6 +458,8 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       dragTarget = bar
       movedFar = false
 
+      const dragThreshold = buttonTarget ? 8 : 4
+
       const handlePointerMove = (moveEv: MouseEvent | TouchEvent) => {
         if (!dragTarget) return
         const currentX = 'touches' in moveEv ? moveEv.touches[0].clientX : (moveEv as MouseEvent).clientX
@@ -463,7 +468,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         const deltaX = currentX - startX
         const deltaY = currentY - startY
 
-        if (!movedFar && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+        if (!movedFar && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
           movedFar = true
           isDragging = true
         }
@@ -491,12 +496,20 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         }
       }
 
-      const handlePointerUp = () => {
+      const handlePointerUp = (upEv: MouseEvent | TouchEvent) => {
         if (dragTarget) {
           dragTarget.classList.remove('is-dragging')
         }
+
+        // On mobile touch end, if finger didn't drag far and target was a button, programmatically execute click
+        if ('changedTouches' in upEv && !movedFar && buttonTarget) {
+          if (upEv.cancelable) upEv.preventDefault()
+          buttonTarget.click()
+        }
+
         isDragging = false
         dragTarget = null
+        buttonTarget = null
         window.removeEventListener('mousemove', handlePointerMove)
         window.removeEventListener('mouseup', handlePointerUp)
         window.removeEventListener('touchmove', handlePointerMove)
@@ -506,7 +519,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       window.addEventListener('mousemove', handlePointerMove, { passive: false })
       window.addEventListener('mouseup', handlePointerUp)
       window.addEventListener('touchmove', handlePointerMove, { passive: false })
-      window.addEventListener('touchend', handlePointerUp)
+      window.addEventListener('touchend', handlePointerUp, { passive: false })
     }
 
     document.addEventListener('mousedown', handlePointerDown)

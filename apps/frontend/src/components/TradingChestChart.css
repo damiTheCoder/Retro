@@ -470,47 +470,63 @@
   box-shadow: none !important;
 }
 
-.klinecharts-pro-replay-bar .replay-btn {
+.klinecharts-pro-replay-bar .replay-btn,
+.replay-top-bar .replay-btn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 6px !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
   color: #0f172a !important;
   fill: #0f172a !important;
   cursor: pointer !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
   transition: background 0.15s ease !important;
 }
 
-.klinecharts-pro-replay-bar .replay-btn:hover {
+.klinecharts-pro-replay-bar .replay-btn:hover,
+.replay-top-bar .replay-btn:hover {
   background: rgba(0, 0, 0, 0.08) !important;
 }
 
-.klinecharts-pro-replay-bar .replay-btn svg {
-  width: 16px !important;
-  height: 16px !important;
+.klinecharts-pro-replay-bar .replay-btn svg,
+.replay-top-bar .replay-btn svg {
+  width: 18px !important;
+  height: 18px !important;
   fill: #0f172a !important;
   color: #0f172a !important;
+  pointer-events: none !important;
 }
 
-.klinecharts-pro-replay-bar .replay-speed {
+.klinecharts-pro-replay-bar .replay-speed,
+.replay-top-bar .replay-speed {
   font-size: 13px !important;
   font-weight: 700 !important;
   color: #2563eb !important;
   cursor: pointer !important;
-  min-width: 32px !important;
-  text-align: center !important;
-  padding: 4px 6px !important;
-  border-radius: 4px !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+  min-width: 36px !important;
+  min-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
 }
 
-.klinecharts-pro-replay-bar .replay-speed:hover {
+.klinecharts-pro-replay-bar .replay-speed:hover,
+.replay-top-bar .replay-speed:hover {
   background: rgba(37, 99, 235, 0.1) !important;
   color: #1d4ed8 !important;
 }
 
-.klinecharts-pro-replay-bar .replay-progress {
+.klinecharts-pro-replay-bar .replay-progress,
+.replay-top-bar .replay-progress {
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
@@ -519,24 +535,35 @@
   font-weight: 600 !important;
 }
 
-.klinecharts-pro-replay-bar .replay-progress input[type=range] {
+.klinecharts-pro-replay-bar .replay-progress input[type=range],
+.replay-top-bar .replay-progress input[type=range] {
   width: 110px !important;
-  height: 5px !important;
+  height: 8px !important;
   accent-color: #2563eb !important;
   cursor: pointer !important;
+  pointer-events: auto !important;
+  touch-action: pan-x !important;
 }
 
-.klinecharts-pro-replay-bar .replay-exit {
+.klinecharts-pro-replay-bar .replay-exit,
+.replay-top-bar .replay-exit {
   color: #dc2626 !important;
   font-size: 13px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
-  padding: 4px 8px !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+  padding: 6px 10px !important;
   border-radius: 6px !important;
+  min-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
   transition: background 0.15s ease, color 0.15s ease !important;
 }
 
-.klinecharts-pro-replay-bar .replay-exit:hover {
+.klinecharts-pro-replay-bar .replay-exit:hover,
+.replay-top-bar .replay-exit:hover {
   background: rgba(220, 38, 38, 0.1) !important;
   color: #b91c1c !important;
   text-decoration: none !important;
