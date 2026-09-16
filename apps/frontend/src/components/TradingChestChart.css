@@ -22,7 +22,7 @@
 /* Ensure the drawing toolbar sidebar stays on top of the chart widget canvas */
 .klinecharts-pro-content {
   display: flex !important;
-  flex-direction: row !important;
+  flex-direction: column-reverse !important;
   z-index: 10 !important;
   min-height: 0 !important;
 }
@@ -30,20 +30,24 @@
 .klinecharts-pro-drawing-bar {
   position: relative !important;
   z-index: 1000 !important;
-  height: 100% !important;
-  max-height: 100% !important;
-  min-height: 0 !important;
-  align-self: stretch !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior: contain !important;
   -webkit-overflow-scrolling: touch !important;
-  touch-action: pan-y !important;
-  width: 52px !important;
-  flex-shrink: 0 !important;
+  touch-action: pan-x !important;
   background-color: var(--klinecharts-pro-background-color, #ffffff) !important;
   border: none !important;
-  border-left: none !important;
-  border-right: none !important;
+  border-top: 1px solid #e2e8f0 !important;
+  flex-shrink: 0 !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 .klinecharts-pro-drawing-bar::-webkit-scrollbar {
@@ -54,7 +58,7 @@
 
 .klinecharts-pro-drawing-bar,
 .klinecharts-pro-drawing-bar * {
-  touch-action: pan-y !important;
+  touch-action: pan-x !important;
   pointer-events: auto !important;
   -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2) !important;
 }
@@ -62,16 +66,18 @@
 .klinecharts-pro-drawing-bar .item {
   position: relative !important;
   z-index: 1000 !important;
-  touch-action: pan-y !important;
+  touch-action: pan-x !important;
   pointer-events: auto !important;
   cursor: pointer !important;
-  min-height: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  justify-content: space-between !important;
-  padding: 0 2px !important;
+  justify-content: center !important;
+  padding: 0 4px !important;
   box-sizing: border-box !important;
+  flex-shrink: 0 !important;
 }
 
 .klinecharts-pro-drawing-bar .item .icon-overlay,
@@ -92,7 +98,7 @@
   pointer-events: auto !important;
   cursor: pointer !important;
   opacity: 1 !important;
-  width: 18px !important;
+  width: 14px !important;
   height: 44px !important;
   z-index: 10 !important;
 }
@@ -147,7 +153,7 @@
   position: relative !important;
   z-index: 1 !important;
   flex: 1 !important;
-  width: calc(100% - 52px) !important;
+  width: 100% !important;
   border: none !important;
   border-right: none !important;
 }
