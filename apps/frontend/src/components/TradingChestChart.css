@@ -139,6 +139,51 @@
   height: 0 !important;
 }
 
+/* Ensure OHLCV legend data & indicator values stay on a single line, horizontally scrollable with hidden scrollbar on mobile */
+.klinecharts-pro-header,
+.klinecharts-pro-period-bar,
+.klinecharts-pro-widget [class*="legend"],
+.klinecharts-pro-widget [class*="tooltip"],
+[class*="klinecharts-pro"] [class*="legend"],
+[class*="klinecharts-pro"] [class*="tooltip"],
+[class*="candle-legend"],
+[class*="indicator-legend"],
+[class*="chart-legend"] {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.klinecharts-pro-header::-webkit-scrollbar,
+.klinecharts-pro-period-bar::-webkit-scrollbar,
+.klinecharts-pro-widget [class*="legend"]::-webkit-scrollbar,
+.klinecharts-pro-widget [class*="tooltip"]::-webkit-scrollbar,
+[class*="klinecharts-pro"] [class*="legend"]::-webkit-scrollbar,
+[class*="klinecharts-pro"] [class*="tooltip"]::-webkit-scrollbar,
+[class*="candle-legend"]::-webkit-scrollbar,
+[class*="indicator-legend"]::-webkit-scrollbar,
+[class*="chart-legend"]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.klinecharts-pro-widget [class*="legend"] *,
+.klinecharts-pro-widget [class*="tooltip"] *,
+[class*="klinecharts-pro"] [class*="legend"] *,
+[class*="klinecharts-pro"] [class*="tooltip"] * {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
 .klinecharts-pro-period-bar .menu-container,
 .klinecharts-pro-period-bar .tools,
 .klinecharts-pro-period-bar .item {
