@@ -313,24 +313,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       })
     }
 
-    const logTouchDebug = (type: string, target: HTMLElement | Element | null, defaultPrevented: boolean = false) => {
-      const debugEl = document.getElementById('touch-debug-list')
-      if (!debugEl) return
-      const nowStr = new Date().toISOString().substring(11, 23)
-      const tag = target ? target.tagName.toLowerCase() : 'null'
-      const rawClass = target && (target as HTMLElement).className && typeof (target as HTMLElement).className === 'string' ? (target as HTMLElement).className : ''
-      const cls = rawClass ? '.' + rawClass.split(' ').filter(Boolean).slice(0, 2).join('.') : ''
-
-      const line = document.createElement('div')
-      line.style.borderBottom = '1px dotted rgba(255,255,255,0.2)'
-      line.style.padding = '1px 0'
-      line.innerText = `${nowStr} | ${type} | <${tag}${cls}> | pd:${defaultPrevented}`
-      debugEl.insertBefore(line, debugEl.firstChild)
-      while (debugEl.children.length > 8) {
-        if (debugEl.lastChild) debugEl.removeChild(debugEl.lastChild)
-      }
-    }
-
     const triggerSolidClick = (target: HTMLElement | Element | null, e?: Event) => {
       let curr: any = target
       while (curr && curr !== document && curr !== document.body) {
@@ -351,7 +333,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
     const onClick = (e: Event) => {
       const target = e.target as HTMLElement
-      logTouchDebug('click', target, e.defaultPrevented)
       triggerSolidClick(target, e)
       const now = Date.now()
 
@@ -433,7 +414,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
     const onDrawingBarTouchEnd = (e: TouchEvent) => {
       const target = e.target as HTMLElement
-      logTouchDebug('sidebar:touchend', target, e.defaultPrevented)
       triggerSolidClick(target, e)
       const itemEl = target.closest('.klinecharts-pro-drawing-bar .item') as HTMLElement | null
       const listLiEl = target.closest('.klinecharts-pro-drawing-bar .item .list li') as HTMLElement | null
@@ -505,16 +485,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
       const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
       const buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]')
-      
-      const debugEl = document.getElementById('touch-debug-list')
-      if (debugEl) {
-        const time = new Date().toISOString().substring(11, 23)
-        const tag = target.tagName.toLowerCase()
-        const line = document.createElement('div')
-        line.style.borderBottom = '1px dotted rgba(255,255,255,0.2)'
-        line.innerText = `${time} | replay:${e.type} | <${tag}> | isBtn:${!!buttonTarget}`
-        debugEl.insertBefore(line, debugEl.firstChild)
-      }
 
       if (buttonTarget) {
         triggerSolidClick(target, e)
@@ -1086,53 +1056,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
           <span>{showToast}</span>
         </div>
       )}
-
-      {/* On-Screen Touch Debug Panel for Mobile Testing */}
-      <div
-        id="touch-debug"
-        style={{
-          position: 'fixed',
-          bottom: '10px',
-          left: '10px',
-          zIndex: 9999999,
-          background: 'rgba(0, 0, 0, 0.90)',
-          color: '#00ff66',
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          padding: '6px 10px',
-          borderRadius: '8px',
-          maxWidth: '300px',
-          width: 'calc(100vw - 20px)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-          pointerEvents: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-          <strong style={{ color: '#fff' }}>TOUCH DEBUG PANEL</strong>
-          <button
-            type="button"
-            onClick={() => {
-              const debugEl = document.getElementById('touch-debug-list')
-              if (debugEl) debugEl.innerHTML = '<div style="color:#aaa">Debug cleared. Tap controls...</div>'
-            }}
-            style={{
-              background: '#ef4444',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              padding: '2px 8px',
-              fontSize: '10px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-            }}
-          >
-            Clear
-          </button>
-        </div>
-        <div id="touch-debug-list" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-          <div style={{ color: '#aaa' }}>Waiting for touch events...</div>
-        </div>
-      </div>
     </div>
   )
 }
