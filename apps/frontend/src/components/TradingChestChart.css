@@ -340,9 +340,9 @@
   padding: 6px 14px !important;
   background: rgba(241, 245, 249, 0.96) !important;
   color: #0f172a !important;
-  border: 1px solid #cbd5e1 !important;
+  border: none !important;
   border-radius: 12px !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: none !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   z-index: 999999 !important;
@@ -350,7 +350,7 @@
   -webkit-touch-callout: none !important;
   user-select: none !important;
   cursor: grab !important;
-  transition: box-shadow 0.2s ease, transform 0.15s ease !important;
+  transition: transform 0.15s ease !important;
 }
 
 .klinecharts-pro-replay-bar::before,
@@ -372,7 +372,7 @@
 .klinecharts-pro-replay-bar.is-dragging,
 .replay-top-bar.is-dragging {
   cursor: grabbing !important;
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.25), 0 0 0 2px #2563eb !important;
+  box-shadow: none !important;
 }
 
 .klinecharts-pro-replay-bar .replay-btn {
