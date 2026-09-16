@@ -338,11 +338,11 @@
   align-items: center !important;
   gap: 10px !important;
   padding: 6px 14px !important;
-  background: rgba(15, 23, 42, 0.94) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: rgba(241, 245, 249, 0.96) !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
   border-radius: 12px !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.3) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   z-index: 999999 !important;
@@ -372,7 +372,7 @@
 .klinecharts-pro-replay-bar.is-dragging,
 .replay-top-bar.is-dragging {
   cursor: grabbing !important;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 2px #3b82f6 !important;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.25), 0 0 0 2px #2563eb !important;
 }
 
 .klinecharts-pro-replay-bar .replay-btn {
@@ -382,27 +382,27 @@
   width: 32px !important;
   height: 32px !important;
   border-radius: 6px !important;
-  color: #ffffff !important;
-  fill: #ffffff !important;
+  color: #0f172a !important;
+  fill: #0f172a !important;
   cursor: pointer !important;
   transition: background 0.15s ease !important;
 }
 
 .klinecharts-pro-replay-bar .replay-btn:hover {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(0, 0, 0, 0.08) !important;
 }
 
 .klinecharts-pro-replay-bar .replay-btn svg {
   width: 16px !important;
   height: 16px !important;
-  fill: #ffffff !important;
-  color: #ffffff !important;
+  fill: #0f172a !important;
+  color: #0f172a !important;
 }
 
 .klinecharts-pro-replay-bar .replay-speed {
   font-size: 13px !important;
   font-weight: 700 !important;
-  color: #60a5fa !important;
+  color: #2563eb !important;
   cursor: pointer !important;
   min-width: 32px !important;
   text-align: center !important;
@@ -411,8 +411,8 @@
 }
 
 .klinecharts-pro-replay-bar .replay-speed:hover {
-  background: rgba(96, 165, 250, 0.2) !important;
-  color: #93c5fd !important;
+  background: rgba(37, 99, 235, 0.1) !important;
+  color: #1d4ed8 !important;
 }
 
 .klinecharts-pro-replay-bar .replay-progress {
@@ -420,19 +420,19 @@
   align-items: center !important;
   gap: 8px !important;
   font-size: 12px !important;
-  color: #94a3b8 !important;
+  color: #475569 !important;
   font-weight: 600 !important;
 }
 
 .klinecharts-pro-replay-bar .replay-progress input[type=range] {
   width: 110px !important;
   height: 5px !important;
-  accent-color: #3b82f6 !important;
+  accent-color: #2563eb !important;
   cursor: pointer !important;
 }
 
 .klinecharts-pro-replay-bar .replay-exit {
-  color: #f87171 !important;
+  color: #dc2626 !important;
   font-size: 13px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
@@ -442,8 +442,8 @@
 }
 
 .klinecharts-pro-replay-bar .replay-exit:hover {
-  background: rgba(248, 113, 113, 0.2) !important;
-  color: #ef4444 !important;
+  background: rgba(220, 38, 38, 0.1) !important;
+  color: #b91c1c !important;
   text-decoration: none !important;
 }
 
