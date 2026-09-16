@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "npm run build --prefix apps/frontend",
-    "dev": "npm run dev --prefix apps/frontend"
+    "build": "cd apps/frontend && npm run build",
+    "dev": "cd apps/frontend && npm run dev"
   }
 }
