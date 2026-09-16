@@ -1,15 +1,53 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sidebar, type NavPage } from './components/Sidebar'
 import TradingChestChart from './components/TradingChestChart'
 import { JournalPage } from './components/JournalPage'
 import { AnalyticsPage } from './components/AnalyticsPage'
-import { PanelLeftIcon } from './components/ShadcnIcons'
+import { AIChatPage } from './components/AIChatPage'
+import { PanelLeftIcon, PlusIcon } from './components/ShadcnIcons'
 import { MobileBottomNav } from './components/MobileBottomNav'
+import {
+  getChatThreads,
+  getActiveThreadId,
+  setActiveThreadId as setStoreActiveThreadId,
+  createNextChatThread,
+  deleteChatThread,
+  subscribeChat,
+  type ChatThread,
+} from './utils/chatStore'
 import './App.css'
 
 function App() {
   const [activePage, setActivePage] = useState<NavPage>('chart')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [threads, setThreads] = useState<ChatThread[]>([])
+  const [activeThreadId, setActiveThreadId] = useState<string>('')
+
+  const syncChatData = () => {
+    setThreads(getChatThreads())
+    setActiveThreadId(getActiveThreadId())
+  }
+
+  useEffect(() => {
+    syncChatData()
+    const unsubscribe = subscribeChat(syncChatData)
+    return () => unsubscribe()
+  }, [])
+
+  const [historyMenuOpen, setHistoryMenuOpen] = useState(false)
+
+  const currentThread = threads.find((t) => t.id === activeThreadId)
+
+  const handleNewChat = () => {
+    createNextChatThread()
+    setActivePage('aichat')
+  }
+
+  const handleDeleteCurrentThread = () => {
+    if (currentThread) {
+      deleteChatThread(currentThread.id)
+    }
+  }
 
   const handleSelectPage = (page: NavPage) => {
     setActivePage(page)
@@ -25,7 +63,7 @@ function App() {
 
         {/* Main Page Area */}
         <main className="app-content">
-          {/* Top Header Bar inside the page area */}
+          {/* Top Header Bar inside the page area (Always visible across all pages) */}
           <header className="page-top-header">
             <div className="top-header-left">
               <button
@@ -39,7 +77,62 @@ function App() {
               {/* Visible on Mobile View (since Sidebar is hidden on mobile) */}
               <div className="mobile-header-brand">
                 <img src="/Logo.jpeg" alt="Logo" className="mobile-header-logo" />
-                <span className="mobile-header-title">chart rabbit</span>
+                <span className="mobile-header-title">Chart Rabbit</span>
+              </div>
+            </div>
+
+            {/* Header Right Actions (Always Visible Across All Pages) */}
+            <div className="top-header-right-actions">
+              <button className="new-chat-btn" onClick={handleNewChat} title="Start new AI conversation">
+                <PlusIcon /> <span>New Chat</span>
+              </button>
+
+              <div className="history-dropdown-container">
+                <button
+                  className="history-menu-btn"
+                  onClick={() => setHistoryMenuOpen(!historyMenuOpen)}
+                  title="Chat History"
+                >
+                  <span>History</span>
+                </button>
+
+                {historyMenuOpen && (
+                  <div className="history-menu-popover">
+                    <div className="history-menu-header">Chat History</div>
+                    <div className="history-menu-list">
+                      {threads.length === 0 ? (
+                        <div className="history-empty-item">No past chats</div>
+                      ) : (
+                        threads.map((t) => (
+                          <button
+                            key={t.id}
+                            className={`history-menu-item ${t.id === activeThreadId ? 'active' : ''}`}
+                            onClick={() => {
+                              setStoreActiveThreadId(t.id)
+                              setActivePage('aichat')
+                              setHistoryMenuOpen(false)
+                            }}
+                          >
+                            <span className="history-item-title">{t.title}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    {currentThread && (
+                      <div className="history-menu-footer">
+                        <button
+                          className="history-delete-current-btn"
+                          onClick={() => {
+                            handleDeleteCurrentThread()
+                            setHistoryMenuOpen(false)
+                          }}
+                        >
+                          Delete Current Chat
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </header>
@@ -47,7 +140,7 @@ function App() {
           {/* Page Content Views */}
           {activePage === 'chart' && (
             <div className="page-view chart-page-view">
-              <TradingChestChart />
+              <TradingChestChart onNavigateToJournal={() => handleSelectPage('journal')} />
             </div>
           )}
 
@@ -60,6 +153,12 @@ function App() {
           {activePage === 'analytics' && (
             <div className="page-view">
               <AnalyticsPage />
+            </div>
+          )}
+
+          {activePage === 'aichat' && (
+            <div className="page-view">
+              <AIChatPage />
             </div>
           )}
         </main>

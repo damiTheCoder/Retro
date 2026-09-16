@@ -25,15 +25,100 @@ function createPositionFigures(
   params: OverlayCreateFiguresCallbackParams,
   isLong: boolean
 ): OverlayFigure[] {
-  const { overlay, coordinates, yAxis } = params
-  if (!coordinates || coordinates.length === 0) return []
+  const { overlay, coordinates, bounding, yAxis, xAxis } = params
+  if (!overlay || !overlay.points || overlay.points.length === 0) return []
 
-  const entryCoord = coordinates[0]
-  if (!entryCoord) return []
+  const entryPoint = overlay.points[0]
+  if (!entryPoint || entryPoint.value == null || isNaN(entryPoint.value)) return []
 
+  const entryPrice = entryPoint.value
   const currentStep = overlay.currentStep ?? 3
-  const entryPrice = overlay.points[0]?.value ?? 0
-  const x0 = entryCoord.x
+
+  const canvasWidth = bounding?.width ?? 1000
+  const canvasHeight = bounding?.height ?? 500
+
+  // 1. Calculate yEntry (Y pixel position for Entry Price)
+  let yEntry: number | undefined = coordinates?.[0]?.y
+  if (yEntry == null || isNaN(yEntry)) {
+    if (yAxis && typeof yAxis.convertToPixel === 'function') {
+      const py = yAxis.convertToPixel(entryPrice)
+      if (py != null && !isNaN(py)) {
+        yEntry = py
+      }
+    }
+  }
+  if (yEntry == null || isNaN(yEntry)) {
+    yEntry = canvasHeight / 2
+  }
+
+  // 2. Calculate x0 (X pixel position for Entry Point)
+  let x0: number | undefined = coordinates?.[0]?.x
+  if ((x0 == null || isNaN(x0)) && xAxis && typeof xAxis.convertToPixel === 'function' && entryPoint) {
+    if (entryPoint.dataIndex != null) {
+      const px = xAxis.convertToPixel(entryPoint.dataIndex)
+      if (px != null && !isNaN(px)) x0 = px
+    } else if (entryPoint.timestamp != null) {
+      const px = xAxis.convertToPixel(entryPoint.timestamp)
+      if (px != null && !isNaN(px)) x0 = px
+    }
+  }
+
+  const isEntryXInvalid = x0 == null || isNaN(x0)
+
+  // Determine minX and maxX for drawing target/stop loss zone boxes and pills
+  let minX: number
+  let maxX: number
+
+  if (isEntryXInvalid) {
+    // When chart isn't visible yet or entry point is in the future during replay:
+    // Display the Stop Loss and Take Profit zone box on the right portion of the chart screen
+    minX = Math.max(20, canvasWidth - 320)
+    maxX = canvasWidth - 20
+  } else {
+    // Entry X is valid
+    const validX0 = x0!
+    let x1 = coordinates?.[1]?.x
+    let x2 = coordinates?.[2]?.x
+
+    if ((x1 == null || isNaN(x1)) && xAxis && typeof xAxis.convertToPixel === 'function' && overlay.points[1]) {
+      const pt1 = overlay.points[1]
+      if (pt1.dataIndex != null) {
+        const px = xAxis.convertToPixel(pt1.dataIndex)
+        if (px != null && !isNaN(px)) x1 = px
+      } else if (pt1.timestamp != null) {
+        const px = xAxis.convertToPixel(pt1.timestamp)
+        if (px != null && !isNaN(px)) x1 = px
+      }
+    }
+
+    if ((x2 == null || isNaN(x2)) && xAxis && typeof xAxis.convertToPixel === 'function' && overlay.points[2]) {
+      const pt2 = overlay.points[2]
+      if (pt2.dataIndex != null) {
+        const px = xAxis.convertToPixel(pt2.dataIndex)
+        if (px != null && !isNaN(px)) x2 = px
+      } else if (pt2.timestamp != null) {
+        const px = xAxis.convertToPixel(pt2.timestamp)
+        if (px != null && !isNaN(px)) x2 = px
+      }
+    }
+
+    const valX1 = x1 != null && !isNaN(x1) ? x1 : validX0 + 160
+    const valX2 = x2 != null && !isNaN(x2) ? x2 : valX1
+
+    const rawMinX = Math.min(validX0, valX1, valX2)
+    const rawMaxX = Math.max(validX0, valX1, valX2)
+
+    if (rawMaxX < 0) {
+      minX = 20
+      maxX = 200
+    } else if (rawMinX > canvasWidth) {
+      minX = Math.max(20, canvasWidth - 320)
+      maxX = canvasWidth - 20
+    } else {
+      minX = rawMinX
+      maxX = rawMaxX - rawMinX < 40 ? rawMinX + 160 : rawMaxX
+    }
+  }
 
   const targetFill = 'rgba(0, 150, 136, 0.25)'
   const targetBorder = '#00a68c'
@@ -42,18 +127,27 @@ function createPositionFigures(
 
   // STEP 1: Click 1 placed (Entry). User is dragging cursor to set Target price & box width.
   if (currentStep === 1) {
-    const cursorCoord = coordinates[1] ?? { x: x0 + 160, y: entryCoord.y - 80 }
-    const cursorPrice = overlay.points[1]?.value ?? (yAxis ? yAxis.convertFromPixel(cursorCoord.y) : (isLong ? entryPrice * 1.02 : entryPrice * 0.98))
+    let cursorPrice = overlay.points[1]?.value
+    let yTarget: number | undefined = coordinates?.[1]?.y
+    if (cursorPrice == null || isNaN(cursorPrice)) {
+      if (yTarget != null && !isNaN(yTarget) && yAxis && typeof yAxis.convertFromPixel === 'function') {
+        cursorPrice = yAxis.convertFromPixel(yTarget)
+      } else {
+        cursorPrice = isLong ? entryPrice * 1.02 : entryPrice * 0.98
+      }
+    }
+    if (yTarget == null || isNaN(yTarget)) {
+      if (yAxis && typeof yAxis.convertToPixel === 'function') {
+        const py = yAxis.convertToPixel(cursorPrice)
+        if (py != null && !isNaN(py)) yTarget = py
+      }
+    }
+    if (yTarget == null || isNaN(yTarget)) {
+      yTarget = isLong ? yEntry - 80 : yEntry + 80
+    }
 
-    const targetPrice = cursorPrice
-    const yTarget = cursorCoord.y
-    const yEntry = entryCoord.y
-
-    const minX = Math.min(x0, cursorCoord.x)
-    const maxX = Math.max(x0, cursorCoord.x, minX + 40)
     const centerX = minX + (maxX - minX) / 2
-
-    const targetDiff = Math.abs(targetPrice - entryPrice)
+    const targetDiff = Math.abs(cursorPrice - entryPrice)
     const targetPct = entryPrice ? (targetDiff / entryPrice) * 100 : 0
     const targetPips = calculatePips(targetDiff, entryPrice)
     const targetAmount = (targetDiff * 616.7).toFixed(2)
@@ -61,7 +155,19 @@ function createPositionFigures(
 
     const figures: OverlayFigure[] = []
 
-    // Live Target Zone Box Preview
+    // Horizontal guide line across chart for target
+    figures.push({
+      type: 'line',
+      attrs: {
+        coordinates: [
+          { x: 0, y: yTarget },
+          { x: canvasWidth, y: yTarget },
+        ],
+      },
+      styles: { color: targetBorder, size: 1, style: 'dashed', dashedValue: [4, 4] },
+    })
+
+    // Target Zone Polygon
     figures.push({
       type: 'polygon',
       attrs: {
@@ -85,8 +191,8 @@ function createPositionFigures(
       type: 'line',
       attrs: {
         coordinates: [
-          { x: minX, y: yEntry },
-          { x: maxX, y: yEntry },
+          { x: 0, y: yEntry },
+          { x: canvasWidth, y: yEntry },
         ],
       },
       styles: { color: '#333333', size: 1.5 },
@@ -120,32 +226,41 @@ function createPositionFigures(
   }
 
   // STEP 2 & 3: Target is set. In Step 2, user is dragging cursor to set Stop Loss. In Step 3, drawing is complete.
-  const targetCoord = coordinates[1]
-  const stopCoord = coordinates[2]
-
   let targetPrice = overlay.points[1]?.value
-  if (targetPrice == null) {
+  if (targetPrice == null || isNaN(targetPrice)) {
     targetPrice = isLong ? entryPrice * 1.01867 : entryPrice * 0.98133
   }
 
-  let stopPrice = overlay.points[2]?.value
-  if (stopPrice == null && currentStep === 2 && stopCoord) {
-    stopPrice = yAxis ? yAxis.convertFromPixel(stopCoord.y) : (isLong ? entryPrice * 0.952 : entryPrice * 1.048)
-  } else if (stopPrice == null) {
-    stopPrice = isLong ? entryPrice * 0.952 : entryPrice * 1.048
+  let yTarget: number | undefined = coordinates?.[1]?.y
+  if (yTarget == null || isNaN(yTarget) || currentStep === 3) {
+    if (yAxis && typeof yAxis.convertToPixel === 'function') {
+      const py = yAxis.convertToPixel(targetPrice)
+      if (py != null && !isNaN(py)) yTarget = py
+    }
+  }
+  if (yTarget == null || isNaN(yTarget)) {
+    yTarget = isLong ? yEntry - 100 : yEntry + 100
   }
 
-  // Derive horizontal bounds from control points for 2D resizing
-  const x1 = targetCoord ? targetCoord.x : x0 + 160
-  const x2 = stopCoord ? stopCoord.x : x1
+  let stopPrice = overlay.points[2]?.value
+  if (stopPrice == null || isNaN(stopPrice)) {
+    if (currentStep === 2 && coordinates?.[2]?.y != null && !isNaN(coordinates[2].y) && yAxis && typeof yAxis.convertFromPixel === 'function') {
+      stopPrice = yAxis.convertFromPixel(coordinates[2].y)
+    } else {
+      stopPrice = isLong ? entryPrice * 0.952 : entryPrice * 1.048
+    }
+  }
 
-  const minX = Math.min(x0, x1, x2)
-  const rawMaxX = Math.max(x0, x1, x2)
-  const maxX = rawMaxX - minX < 40 ? minX + 160 : rawMaxX
-
-  const yEntry = entryCoord.y
-  const yTarget = targetCoord?.y ?? (yAxis ? yAxis.convertToPixel(targetPrice) : yEntry - 100)
-  const yStop = stopCoord?.y ?? (yAxis ? yAxis.convertToPixel(stopPrice) : yEntry + 140)
+  let yStop: number | undefined = coordinates?.[2]?.y
+  if (yStop == null || isNaN(yStop) || currentStep === 3) {
+    if (yAxis && typeof yAxis.convertToPixel === 'function') {
+      const py = yAxis.convertToPixel(stopPrice)
+      if (py != null && !isNaN(py)) yStop = py
+    }
+  }
+  if (yStop == null || isNaN(yStop)) {
+    yStop = isLong ? yEntry + 140 : yEntry - 140
+  }
 
   const targetDiff = Math.abs(targetPrice - entryPrice)
   const targetPct = entryPrice ? (targetDiff / entryPrice) * 100 : 1.867
@@ -168,6 +283,40 @@ function createPositionFigures(
   const stopText = `Stop: ${formatIntOrDec(stopDiff, 3)} (${stopPct.toFixed(3)}%) ${stopPips}, Amount: ${stopAmount}`
 
   const figures: OverlayFigure[] = []
+
+  // Horizontal dashed guide line across full screen for Take Profit
+  figures.push({
+    type: 'line',
+    attrs: {
+      coordinates: [
+        { x: 0, y: yTarget },
+        { x: canvasWidth, y: yTarget },
+      ],
+    },
+    styles: {
+      color: targetBorder,
+      size: 1,
+      style: 'dashed',
+      dashedValue: [5, 4],
+    },
+  })
+
+  // Horizontal dashed guide line across full screen for Stop Loss
+  figures.push({
+    type: 'line',
+    attrs: {
+      coordinates: [
+        { x: 0, y: yStop },
+        { x: canvasWidth, y: yStop },
+      ],
+    },
+    styles: {
+      color: stopBorder,
+      size: 1,
+      style: 'dashed',
+      dashedValue: [5, 4],
+    },
+  })
 
   // 1. Target Zone Polygon
   figures.push({
@@ -207,13 +356,13 @@ function createPositionFigures(
     },
   })
 
-  // 3. Entry Line
+  // 3. Entry Line across full width
   figures.push({
     type: 'line',
     attrs: {
       coordinates: [
-        { x: minX, y: yEntry },
-        { x: maxX, y: yEntry },
+        { x: 0, y: yEntry },
+        { x: canvasWidth, y: yEntry },
       ],
     },
     styles: {

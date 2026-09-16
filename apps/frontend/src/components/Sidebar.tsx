@@ -1,12 +1,16 @@
+import { useState, useEffect } from 'react'
 import {
-  CandlestickChartIcon,
-  BookOpenIcon,
-  LineChartIcon,
-  ActivityIcon,
-} from './ShadcnIcons'
+  getChatThreads,
+  getActiveThreadId,
+  setActiveThreadId,
+  createNextChatThread,
+  deleteChatThread,
+  subscribeChat,
+  type ChatThread,
+} from '../utils/chatStore'
 import './Sidebar.css'
 
-export type NavPage = 'chart' | 'journal' | 'analytics'
+export type NavPage = 'chart' | 'journal' | 'analytics' | 'aichat'
 
 interface SidebarProps {
   activePage: NavPage
@@ -14,13 +18,43 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
+  const [threads, setThreads] = useState<ChatThread[]>([])
+  const [activeThreadId, setActiveId] = useState<string>('')
+
+  const syncChat = () => {
+    setThreads(getChatThreads())
+    setActiveId(getActiveThreadId())
+  }
+
+  useEffect(() => {
+    syncChat()
+    const unsubscribe = subscribeChat(syncChat)
+    return () => unsubscribe()
+  }, [])
+
+  const handleSelectThread = (threadId: string) => {
+    setActiveThreadId(threadId)
+    onSelectPage('aichat')
+  }
+
+  const handleCreateNewChat = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    createNextChatThread()
+    onSelectPage('aichat')
+  }
+
+  const handleDeleteThread = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    deleteChatThread(id)
+  }
+
   return (
     <aside className="shadcn-sidebar">
       {/* Sidebar Header with Logo */}
       <div className="sidebar-header">
         <div className="sidebar-brand">
           <img src="/Logo.jpeg" alt="Logo" className="sidebar-logo" />
-          <span className="sidebar-brand-title">chart rabbit</span>
+          <span className="sidebar-brand-title">Chart Rabbit</span>
         </div>
       </div>
 
@@ -36,7 +70,6 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
                 onClick={() => onSelectPage('chart')}
                 title="Live Chart"
               >
-                <CandlestickChartIcon className="menu-icon" />
                 <span className="menu-text">Live Chart</span>
               </button>
             </div>
@@ -53,7 +86,6 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
                 onClick={() => onSelectPage('journal')}
                 title="Journal & Strategy"
               >
-                <BookOpenIcon className="menu-icon" />
                 <span className="menu-text">Journal & Strategy</span>
               </button>
             </div>
@@ -64,9 +96,64 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
                 onClick={() => onSelectPage('analytics')}
                 title="Analytics & PnL"
               >
-                <LineChartIcon className="menu-icon" />
                 <span className="menu-text">Analytics & PnL</span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Assistant & Chat History Group */}
+        <div className="sidebar-group">
+          <div className="sidebar-group-header">
+            <span className="sidebar-group-label">AI Assistant</span>
+            <button
+              className="sidebar-add-chat-btn"
+              onClick={handleCreateNewChat}
+              title="Add New Chat"
+            >
+              <span>+ New</span>
+            </button>
+          </div>
+
+          <div className="sidebar-menu">
+            <div className="sidebar-menu-item">
+              <button
+                className={`sidebar-menu-button ${activePage === 'aichat' ? 'active' : ''}`}
+                onClick={() => onSelectPage('aichat')}
+                title="AI Trading Assistant"
+              >
+                <span className="menu-text">AI Trading Assistant</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Chat History List */}
+          <div className="chat-history-section">
+            <div className="history-section-title">Recent Chat History</div>
+            <div className="history-list">
+              {threads.length === 0 ? (
+                <div className="empty-history-text">No chats yet</div>
+              ) : (
+                threads.map((thread) => {
+                  const isActive = activePage === 'aichat' && activeThreadId === thread.id
+                  return (
+                    <div
+                      key={thread.id}
+                      className={`history-item ${isActive ? 'active' : ''}`}
+                      onClick={() => handleSelectThread(thread.id)}
+                    >
+                      <span className="history-title">{thread.title}</span>
+                      <button
+                        className="history-delete-btn"
+                        onClick={(e) => handleDeleteThread(e, thread.id)}
+                        title="Delete chat"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </div>
         </div>
@@ -76,13 +163,11 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
       <div className="sidebar-footer">
         <div className="user-profile-card">
           <div className="user-avatar">
-            <span>h</span>
+            <span>PT</span>
           </div>
           <div className="user-info">
             <span className="user-name">Pro Trader</span>
-            <span className="user-status">
-              <ActivityIcon className="activity-dot" /> Multi-Asset Active
-            </span>
+            <span className="user-status">Multi-Asset Active</span>
           </div>
         </div>
       </div>
