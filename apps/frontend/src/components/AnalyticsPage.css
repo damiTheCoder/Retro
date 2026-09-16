@@ -34,6 +34,7 @@
 .date-dropdown-container {
   position: relative;
   display: inline-block;
+  z-index: 100;
 }
 
 .date-dropdown-trigger {
@@ -72,20 +73,20 @@
   transform: rotate(180deg);
 }
 
-/* Date Dropdown Popover Menu */
+/* Date Dropdown Popover Menu - Positioned to Right on Desktop */
 .date-dropdown-popover {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
-  right: auto;
-  width: 320px;
+  right: 0;
+  left: auto;
+  width: 350px;
   max-width: calc(100vw - 32px);
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-  z-index: 1000;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.18);
+  z-index: 999999;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -119,25 +120,33 @@
 
 .popover-pills-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   background: #f8fafc;
-  padding: 6px;
+  padding: 8px;
   border-radius: 10px;
 }
 
 .popover-pills-row.horizontal-scroll {
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
 }
 
 .popover-pills-row.horizontal-scroll::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+}
+
+.popover-pills-row.horizontal-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
 }
 
 .pop-pill-btn {
-  padding: 6px 14px;
+  padding: 6px 12px;
   background: transparent;
   border: none;
   border-radius: 6px;
@@ -151,7 +160,7 @@
 
 .pop-pill-btn:hover {
   color: #0f172a;
-  background: rgba(15, 23, 42, 0.06);
+  background: rgba(15, 23, 42, 0.08);
 }
 
 .pop-pill-btn.active {
