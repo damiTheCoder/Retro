@@ -1,149 +1,155 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { KLineChartPro } from 'trading-chest'
 import type { SymbolInfo, Period, Datafeed } from 'trading-chest'
-import { ActionType, TooltipShowRule } from 'klinecharts'
+import { ActionType, TooltipShowRule, registerIndicator, IndicatorSeries, LineType } from 'klinecharts'
 import 'trading-chest/dist/trading-chest.css'
+import './TradingChestChart.css'
+import { registerPositionOverlays } from '../utils/positionOverlays'
+import { resolveSymbol, ALL_POPULAR_SYMBOLS } from '../utils/symbolResolver'
+import { fetchMultiAssetHistory } from '../utils/multiAssetDatafeed'
 
-const SYMBOL: SymbolInfo = {
-  ticker: 'BTCUSDT',
-  name: 'Bitcoin',
-  shortName: 'BTC',
-  exchange: 'Binance',
-  market: 'Crypto',
-  pricePrecision: 2,
-  volumePrecision: 8,
-  priceCurrency: 'USD',
-  type: 'crypto',
+registerPositionOverlays()
+
+try {
+  registerIndicator({
+    name: 'VOL',
+    shortName: 'VOL',
+    series: IndicatorSeries.Volume,
+    calcParams: [],
+    figures: [
+      {
+        key: 'volume',
+        title: 'VOL: ',
+        type: 'bar',
+        baseValue: 0,
+        styles: (data: any) => {
+          const currentData = data?.current?.kLineData
+          if (currentData) {
+            const isUp = (currentData.close ?? 0) >= (currentData.open ?? 0)
+            return {
+              color: isUp ? '#26a69a' : '#ef5350',
+            }
+          }
+          return { color: '#26a69a' }
+        },
+      },
+    ],
+    styles: {
+      lines: [
+        { style: LineType.Solid, size: 0, color: 'transparent', dashedValue: [0, 0], smooth: false },
+        { style: LineType.Solid, size: 0, color: 'transparent', dashedValue: [0, 0], smooth: false },
+        { style: LineType.Solid, size: 0, color: 'transparent', dashedValue: [0, 0], smooth: false },
+      ],
+    },
+    calc: (dataList: any[]) => dataList.map((d: any) => ({ volume: d.volume })),
+  })
+} catch (err) {
+  console.warn('VOL register error:', err)
 }
 
+const INITIAL_RESOLVED = resolveSymbol('BTCUSDT')
 const PERIOD: Period = {
   multiplier: 1,
   timespan: 'day',
   text: 'D',
 }
 
-const COIN_GECKO_IDS: Record<string, string> = {
-  BTCUSDT: 'bitcoin',
-  ETHUSDT: 'ethereum',
-  BNBUSDT: 'binancecoin',
-  SOLUSDT: 'solana',
-  XRPUSDT: 'ripple',
-  ADAUSDT: 'cardano',
-  DOGEUSDT: 'dogecoin',
-  AVAXUSDT: 'avalanche-2',
-  DOTUSDT: 'polkadot',
-  MATICUSDT: 'matic-network',
-  LINKUSDT: 'chainlink',
-  UNIUSDT: 'uniswap',
-  ATOMUSDT: 'cosmos',
-  LTCUSDT: 'litecoin',
-  ETCUSDT: 'ethereum-classic',
-  FILUSDT: 'filecoin',
-  APTUSDT: 'aptos',
-  ARBUSDT: 'arbitrum',
-  OPUSDT: 'optimism',
-  SUIUSDT: 'sui',
-}
-
-function toCoinGeckoId(ticker: string): string {
-  const upper = ticker.toUpperCase()
-  if (COIN_GECKO_IDS[upper]) return COIN_GECKO_IDS[upper]
-  const base = upper.replace('USDT', '').replace('USD', '').toLowerCase()
-  const reverseMap: Record<string, string> = {
-    btc: 'bitcoin',
-    eth: 'ethereum',
-    bnb: 'binancecoin',
-    sol: 'solana',
-    xrp: 'ripple',
-    ada: 'cardano',
-    doge: 'dogecoin',
-    avax: 'avalanche-2',
-    dot: 'polkadot',
-    matic: 'matic-network',
-    link: 'chainlink',
-    uni: 'uniswap',
-    atom: 'cosmos',
-    ltc: 'litecoin',
-    etc: 'ethereum-classic',
-    fil: 'filecoin',
-    apt: 'aptos',
-    arb: 'arbitrum',
-    op: 'optimism',
-    sui: 'sui',
-  }
-  return reverseMap[base] || base
-}
-
 function TradingChestChart() {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<KLineChartPro | null>(null)
+  const activeWsRef = useRef<WebSocket | null>(null)
+  const liveTimerRef = useRef<any>(null)
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [ohlc, setOhlc] = useState<{ time: string; open: string; high: string; low: string; close: string; volume: string } | null>(null)
+  const [stockErrorMessage, setStockErrorMessage] = useState<string | null>(null)
 
   const datafeed = useMemo<Datafeed>(() => ({
     searchSymbols: async (query?: string) => {
-      if (!query) return [SYMBOL]
-      try {
-        const res = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`)
-        if (!res.ok) return [SYMBOL]
-        const data = await res.json()
-        return (data.coins || []).slice(0, 20).map((coin: any) => ({
-          ticker: `${coin.symbol.toUpperCase()}USDT`,
-          name: coin.name,
-          shortName: coin.symbol.toUpperCase(),
-          exchange: 'CoinGecko',
-          market: 'Crypto',
-          pricePrecision: 2,
-          volumePrecision: 8,
-          priceCurrency: 'USD',
-          type: 'crypto',
-        }))
-      } catch {
-        return [SYMBOL]
-      }
+      if (!query || !query.trim()) return ALL_POPULAR_SYMBOLS
+      const q = query.trim().toUpperCase()
+
+      const matches = ALL_POPULAR_SYMBOLS.filter(
+        (s) => s.ticker.includes(q) || (s.name && s.name.toUpperCase().includes(q)) || (s.shortName && s.shortName.toUpperCase().includes(q))
+      )
+      if (matches.length > 0) return matches
+
+      const resolved = resolveSymbol(q)
+      return [resolved.symbolInfo]
     },
 
-    getHistoryKLineData: async (_symbol: SymbolInfo, _period: Period, _from: number, _to: number) => {
+    getHistoryKLineData: async (symbol: SymbolInfo, period: Period, _from: number, _to: number) => {
       setLoading(true)
       setError(null)
+      setStockErrorMessage(null)
+
+      const resolved = resolveSymbol(symbol?.ticker || 'BTCUSDT')
+
       try {
-        const coinId = toCoinGeckoId(_symbol.ticker)
-        const daysMap: Record<string, number> = {
-          minute: 1,
-          hour: 7,
-          day: 30,
-          week: 90,
-          month: 365,
-          year: 365,
+        const res = await fetchMultiAssetHistory(resolved, period)
+        if (res.isStockError) {
+          setStockErrorMessage(res.stockErrorMessage || 'Stock data unavailable — free tier limit reached or symbol not covered')
         }
-        const timespan = _period.timespan.toLowerCase()
-        const days = daysMap[timespan] || 30
-        const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`)
-        if (!res.ok) throw new Error('Failed to fetch kline data')
-        const raw = await res.json()
-        if (!Array.isArray(raw) || raw.length === 0) return []
-        return raw.map((d: [number, number, number, number, number]) => ({
-          timestamp: d[0],
-          open: d[1],
-          high: d[2],
-          low: d[3],
-          close: d[4],
-          volume: 0,
-        }))
-      } catch (e) {
-        console.error('Datafeed error:', e)
-        setError('Failed to load chart data')
+        return res.candles
+      } catch (err) {
+        console.error('getHistoryKLineData error:', err)
+        setError('Failed loading chart data')
         return []
       } finally {
         setLoading(false)
       }
     },
 
-    subscribe: (_symbol: SymbolInfo, _period: Period, _callback: (data: any) => void) => {
+    subscribe: (symbol: SymbolInfo, _period: Period, callback: (data: any) => void) => {
+      if (activeWsRef.current) {
+        activeWsRef.current.close()
+        activeWsRef.current = null
+      }
+      if (liveTimerRef.current) {
+        clearInterval(liveTimerRef.current)
+        liveTimerRef.current = null
+      }
+
+      const resolved = resolveSymbol(symbol?.ticker || 'BTCUSDT')
+
+      if (resolved.assetClass === 'crypto') {
+        const ticker = resolved.normalizedSymbol.toLowerCase()
+        try {
+          const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${ticker}@kline_1d`)
+          ws.onmessage = (event) => {
+            try {
+              const msg = JSON.parse(event.data)
+              if (msg && msg.k) {
+                const k = msg.k
+                callback({
+                  timestamp: Number(k.t),
+                  open: parseFloat(k.o),
+                  high: parseFloat(k.h),
+                  low: parseFloat(k.l),
+                  close: parseFloat(k.c),
+                  volume: parseFloat(k.v),
+                })
+              }
+            } catch (err) {
+              console.error('WS parse error:', err)
+            }
+          }
+          activeWsRef.current = ws
+        } catch (err) {
+          console.warn('WS connect error:', err)
+        }
+      }
     },
 
     unsubscribe: (_symbol: SymbolInfo, _period: Period) => {
+      if (activeWsRef.current) {
+        activeWsRef.current.close()
+        activeWsRef.current = null
+      }
+      if (liveTimerRef.current) {
+        clearInterval(liveTimerRef.current)
+        liveTimerRef.current = null
+      }
     },
   }), [])
 
@@ -152,103 +158,104 @@ function TradingChestChart() {
 
     const chart = new KLineChartPro({
       container: containerRef.current,
-      symbol: SYMBOL,
+      symbol: INITIAL_RESOLVED.symbolInfo,
       period: PERIOD,
       theme: 'light',
       locale: 'en',
       drawingBarVisible: true,
       timezone: 'Etc/UTC',
-      mainIndicators: ['MA'],
+      mainIndicators: [],
       subIndicators: ['VOL'],
       datafeed,
-      styles: {
-        candle: {
-          tooltip: {
-            showRule: TooltipShowRule.None,
-          },
-        },
-        indicator: {
-          tooltip: {
-            showRule: TooltipShowRule.None,
-          },
-        },
-      },
-      onError: (e) => {
-        console.error('Chart error:', e)
-        setError(e.message)
-      },
     })
+
+    const chartWidget = chart.getChart()
+    if (chartWidget) {
+      chartWidget.subscribeAction(ActionType.OnCrosshairChange, () => {})
+      ;(chartWidget as any).setStyles({
+        tooltip: {
+          showRule: TooltipShowRule.None,
+        },
+      })
+    }
 
     chartRef.current = chart
 
-    chart.setStyles({
-      candle: {
-        tooltip: { showRule: TooltipShowRule.None },
-      },
-      indicator: {
-        tooltip: { showRule: TooltipShowRule.None },
-      },
-      crosshair: {
-        show: false,
-      },
-    })
+    const containerEl = containerRef.current
+    let resizeObserver: ResizeObserver | null = null
 
-    const underlying = chart.getChart()
-    if (underlying) {
-      const updateOhlc = (data?: any) => {
-        const kline = data?.kLineData || data?.current || data
-        if (!kline) return
-        const format = (v: number, digits = 2) => Number(v).toFixed(digits)
-        const date = new Date((kline.timestamp || kline.time || 0) * 1000)
-        const timeStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        setOhlc({
-          time: timeStr,
-          open: format(kline.open),
-          high: format(kline.high),
-          low: format(kline.low),
-          close: format(kline.close),
-          volume: format(kline.volume || 0, 8),
-        })
-      }
+    if (containerEl) {
+      resizeObserver = new ResizeObserver(() => {
+        if (typeof (chart as any).resize === 'function') {
+          (chart as any).resize()
+        }
+      })
+      resizeObserver.observe(containerEl)
+    }
 
-      underlying.subscribeAction(ActionType.OnCrosshairChange, (event?: any) => {
-        const kline = event?.kLineData || event?.current || event
-        if (kline?.timestamp != null) {
-          updateOhlc(kline)
+    const handleUpdateDropdownPositions = () => {
+      if (!containerEl) return
+      const lists = containerEl.querySelectorAll('.klinecharts-pro-drawing-bar .item .list')
+      lists.forEach((listEl) => {
+        const itemEl = listEl.closest('.item') as HTMLElement
+        if (itemEl && (listEl as HTMLElement).style.display !== 'none') {
+          const rect = itemEl.getBoundingClientRect()
+          const htmlList = listEl as HTMLElement
+          htmlList.style.top = `${rect.top}px`
+          htmlList.style.left = `${rect.right + 6}px`
         }
       })
     }
 
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('.klinecharts-pro-drawing-bar .item')) {
+        requestAnimationFrame(handleUpdateDropdownPositions)
+        setTimeout(handleUpdateDropdownPositions, 50)
+      }
+    }
+    const onScroll = () => {
+      handleUpdateDropdownPositions()
+    }
+
+    if (containerEl) {
+      containerEl.addEventListener('click', onClick)
+      containerEl.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    }
+
     return () => {
+      if (containerEl) {
+        containerEl.removeEventListener('click', onClick)
+        containerEl.removeEventListener('scroll', onScroll, { capture: true } as any)
+      }
+      if (activeWsRef.current) {
+        activeWsRef.current.close()
+        activeWsRef.current = null
+      }
+      if (liveTimerRef.current) {
+        clearInterval(liveTimerRef.current)
+        liveTimerRef.current = null
+      }
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
       chart.dispose()
       chartRef.current = null
     }
   }, [datafeed])
 
-  const handleStartReplay = useCallback(() => {
-    chartRef.current?.startReplay()
-  }, [])
-
   return (
     <div className="tradingchest-wrapper">
+
+      {stockErrorMessage && (
+        <div className="stock-error-banner">
+          ⚠️ {stockErrorMessage}
+        </div>
+      )}
+
       <div ref={containerRef} className="tradingchest-container" />
       {loading && <div className="tradingchest-loading">Loading...</div>}
       {error && <div className="tradingchest-error">{error}</div>}
-      {ohlc && (
-        <div className="ohlc-info-bar">
-          <span className="ohlc-item"><span className="ohlc-label">Time</span> {ohlc.time}</span>
-          <span className="ohlc-item"><span className="ohlc-label">Open</span> {ohlc.open}</span>
-          <span className="ohlc-item"><span className="ohlc-label">High</span> {ohlc.high}</span>
-          <span className="ohlc-item"><span className="ohlc-label">Low</span> {ohlc.low}</span>
-          <span className="ohlc-item"><span className="ohlc-label">Close</span> {ohlc.close}</span>
-          <span className="ohlc-item"><span className="ohlc-label">Vol</span> {ohlc.volume}</span>
-        </div>
-      )}
-      <div className="replay-trigger">
-        <button onClick={handleStartReplay} className="replay-trigger-btn">
-          ▶ Replay
-        </button>
-      </div>
     </div>
   )
 }
