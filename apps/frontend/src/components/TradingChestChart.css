@@ -620,7 +620,9 @@
   }
 
   .klinecharts-pro-replay-bar .replay-progress input[type=range] {
-    width: 60px !important;
+    width: 90px !important;
+    height: 28px !important;
+    touch-action: pan-x !important;
   }
 }
 

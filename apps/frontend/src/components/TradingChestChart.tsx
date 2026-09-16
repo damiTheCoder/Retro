@@ -532,7 +532,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
         addDebugLog(`Move: touch=(${Math.round(currentX)},${Math.round(currentY)}) start=(${Math.round(startX)},${Math.round(startY)}) delta=(${Math.round(deltaX)},${Math.round(deltaY)}) movedFar:${movedFar} isDrag:${isDragging} target:${!!dragTarget}`)
 
-        if (!dragTarget) return
+        if (!dragTarget || (moveEv.target as HTMLElement)?.tagName === 'INPUT') return
 
         if (!movedFar && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
           movedFar = true
