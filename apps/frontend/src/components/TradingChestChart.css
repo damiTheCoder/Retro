@@ -472,15 +472,18 @@
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   position: fixed !important;
-  bottom: 30px !important;
+  top: 50% !important;
   left: 50% !important;
-  transform: translateX(-50%) !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: max-content !important;
+  max-width: calc(100vw - 20px) !important;
   z-index: 999999 !important;
   touch-action: none !important;
   -webkit-touch-callout: none !important;
   user-select: none !important;
   cursor: grab !important;
-  transition: transform 0.15s ease !important;
+  flex-shrink: 0 !important;
 }
 
 .klinecharts-pro-replay-bar::before,
