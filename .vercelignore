@@ -1,0 +1,9 @@
+.git
+.vscode
+.gemini
+venv
+__pycache__
+*.pyc
+*.db
+apps/backend/venv
+apps/frontend/node_modules
