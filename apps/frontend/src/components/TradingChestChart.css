@@ -244,7 +244,6 @@
 .klinecharts-pro-drawing-bar .item .icon-arrow,
 .klinecharts-pro-period-bar .item,
 .klinecharts-pro-overlay-property-bar-item,
-.klinecharts-pro-replay-bar .replay-btn,
 .replay-trigger-btn {
   color: #000000 !important;
   fill: #000000 !important;
@@ -332,19 +331,137 @@
   gap: 8px;
 }
 
-/* Replay Bar & Rounded Logo Auto-Document Button */
+/* Replay Bar Draggable Floating Card & Mobile Touch Support */
+.klinecharts-pro-replay-bar,
 .replay-top-bar {
-  display: flex;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 6px 14px !important;
+  background: rgba(15, 23, 42, 0.94) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.3) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  z-index: 999999 !important;
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+  user-select: none !important;
+  cursor: grab !important;
+  transition: box-shadow 0.2s ease, transform 0.15s ease !important;
+}
+
+.klinecharts-pro-replay-bar::before,
+.replay-top-bar::before {
+  content: '⋮⋮';
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 16px;
-  background: #0f172a;
-  color: #ffffff;
-  border-bottom: none !important;
-  border: none !important;
-  z-index: 1000;
-  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+  margin-right: 2px;
+  cursor: grab;
+  user-select: none;
+}
+
+.klinecharts-pro-replay-bar:active,
+.replay-top-bar:active,
+.klinecharts-pro-replay-bar.is-dragging,
+.replay-top-bar.is-dragging {
+  cursor: grabbing !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 2px #3b82f6 !important;
+}
+
+.klinecharts-pro-replay-bar .replay-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 6px !important;
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+}
+
+.klinecharts-pro-replay-bar .replay-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.klinecharts-pro-replay-bar .replay-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.klinecharts-pro-replay-bar .replay-speed {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #60a5fa !important;
+  cursor: pointer !important;
+  min-width: 32px !important;
+  text-align: center !important;
+  padding: 4px 6px !important;
+  border-radius: 4px !important;
+}
+
+.klinecharts-pro-replay-bar .replay-speed:hover {
+  background: rgba(96, 165, 250, 0.2) !important;
+  color: #93c5fd !important;
+}
+
+.klinecharts-pro-replay-bar .replay-progress {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+}
+
+.klinecharts-pro-replay-bar .replay-progress input[type=range] {
+  width: 110px !important;
+  height: 5px !important;
+  accent-color: #3b82f6 !important;
+  cursor: pointer !important;
+}
+
+.klinecharts-pro-replay-bar .replay-exit {
+  color: #f87171 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+}
+
+.klinecharts-pro-replay-bar .replay-exit:hover {
+  background: rgba(248, 113, 113, 0.2) !important;
+  color: #ef4444 !important;
+  text-decoration: none !important;
+}
+
+/* Mobile responsive constraints for replay console bar */
+@media (max-width: 768px) {
+  .klinecharts-pro-replay-bar,
+  .replay-top-bar {
+    max-width: calc(100vw - 20px) !important;
+    padding: 6px 8px !important;
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .klinecharts-pro-replay-bar .replay-progress input[type=range] {
+    width: 60px !important;
+  }
 }
 
 .replay-controls-left {

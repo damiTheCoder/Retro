@@ -354,6 +354,99 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
   }, [datafeed])
 
+  // Make Replay Bar Draggable on Mobile Touch and Desktop Mouse
+  useEffect(() => {
+    let isDragging = false
+    let dragTarget: HTMLElement | null = null
+    let startX = 0
+    let startY = 0
+    let initialLeft = 0
+    let initialTop = 0
+    let movedFar = false
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement
+      const bar = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') as HTMLElement
+      if (!bar) return
+
+      // Don't hijack input range slider immediately unless dragging occurs outside it
+      const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
+      if (isInput) return
+
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY
+
+      const rect = bar.getBoundingClientRect()
+      startX = clientX
+      startY = clientY
+      initialLeft = rect.left
+      initialTop = rect.top
+      dragTarget = bar
+      movedFar = false
+
+      const handlePointerMove = (moveEv: MouseEvent | TouchEvent) => {
+        if (!dragTarget) return
+        const currentX = 'touches' in moveEv ? moveEv.touches[0].clientX : (moveEv as MouseEvent).clientX
+        const currentY = 'touches' in moveEv ? moveEv.touches[0].clientY : (moveEv as MouseEvent).clientY
+
+        const deltaX = currentX - startX
+        const deltaY = currentY - startY
+
+        if (!movedFar && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+          movedFar = true
+          isDragging = true
+        }
+
+        if (isDragging) {
+          if (moveEv.cancelable) moveEv.preventDefault()
+
+          let newLeft = initialLeft + deltaX
+          let newTop = initialTop + deltaY
+
+          const maxLeft = window.innerWidth - dragTarget.offsetWidth - 10
+          const maxTop = window.innerHeight - dragTarget.offsetHeight - 10
+
+          newLeft = Math.max(10, Math.min(maxLeft, newLeft))
+          newTop = Math.max(10, Math.min(maxTop, newTop))
+
+          dragTarget.style.position = 'fixed'
+          dragTarget.style.left = `${newLeft}px`
+          dragTarget.style.top = `${newTop}px`
+          dragTarget.style.bottom = 'auto'
+          dragTarget.style.right = 'auto'
+          dragTarget.style.transform = 'none'
+          dragTarget.style.zIndex = '999999'
+          dragTarget.classList.add('is-dragging')
+        }
+      }
+
+      const handlePointerUp = () => {
+        if (dragTarget) {
+          dragTarget.classList.remove('is-dragging')
+        }
+        isDragging = false
+        dragTarget = null
+        window.removeEventListener('mousemove', handlePointerMove)
+        window.removeEventListener('mouseup', handlePointerUp)
+        window.removeEventListener('touchmove', handlePointerMove)
+        window.removeEventListener('touchend', handlePointerUp)
+      }
+
+      window.addEventListener('mousemove', handlePointerMove, { passive: false })
+      window.addEventListener('mouseup', handlePointerUp)
+      window.addEventListener('touchmove', handlePointerMove, { passive: false })
+      window.addEventListener('touchend', handlePointerUp)
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('touchstart', handlePointerDown, { passive: false })
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('touchstart', handlePointerDown)
+    }
+  }, [])
+
   // Calculate Real-Time Trade Metrics for Order Execution
   const calculatedMetrics = useMemo(() => {
     const isLong = tradeDirection === 'LONG'
