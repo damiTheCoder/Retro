@@ -227,6 +227,13 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
           tooltip: {
             showRule: TooltipShowRule.Always,
             showType: 'standard',
+            text: {
+              size: 10,
+              marginLeft: 4,
+              marginRight: 4,
+              marginTop: 4,
+              marginBottom: 4,
+            },
             custom: (data: any) => {
               const kLineData = data?.current?.kLineData || data?.current || data
               if (!kLineData || !kLineData.timestamp) return []
@@ -243,12 +250,12 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
               }
 
               return [
-                { title: 'T: ', value: dateStr },
-                { title: 'O: ', value: fmt(kLineData.open) },
-                { title: 'H: ', value: fmt(kLineData.high) },
-                { title: 'L: ', value: fmt(kLineData.low) },
-                { title: 'C: ', value: fmt(kLineData.close) },
-                { title: 'V: ', value: fmt(kLineData.volume) },
+                { title: 'time', value: dateStr },
+                { title: 'open', value: fmt(kLineData.open) },
+                { title: 'high', value: fmt(kLineData.high) },
+                { title: 'low', value: fmt(kLineData.low) },
+                { title: 'close', value: fmt(kLineData.close) },
+                { title: 'volume', value: fmt(kLineData.volume) },
               ]
             },
           },
