@@ -86,13 +86,10 @@
   background: transparent;
 }
 
-/* Date Dropdown Popover Menu - Shifted to Right for Desktop View */
+/* Date Dropdown Popover Menu */
 .date-dropdown-popover {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0 !important;
-  right: auto !important;
-  transform: none !important;
   width: 280px;
   max-width: calc(100vw - 32px);
   background: #ffffff;
@@ -105,6 +102,18 @@
   flex-direction: column;
   gap: 14px;
   animation: popoverFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.date-dropdown-popover.align-left {
+  left: 0;
+  right: auto;
+  transform: none;
+}
+
+.date-dropdown-popover.align-right {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 @keyframes popoverFadeIn {
@@ -757,15 +766,26 @@
   .date-dropdown-popover {
     position: absolute !important;
     top: calc(100% + 6px) !important;
-    right: 0 !important;
+    right: auto !important;
     left: auto !important;
     bottom: auto !important;
-    transform: translateX(-10px) !important;
     width: 260px !important;
     max-width: calc(100vw - 32px) !important;
     box-sizing: border-box;
     padding: 12px !important;
     z-index: 999999 !important;
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18) !important;
+  }
+
+  .date-dropdown-popover.align-left {
+    left: 0 !important;
+    right: auto !important;
+    transform: translateX(-10px) !important;
+  }
+
+  .date-dropdown-popover.align-right {
+    left: auto !important;
+    right: 0 !important;
+    transform: translateX(10px) !important;
   }
 }

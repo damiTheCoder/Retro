@@ -15,8 +15,10 @@ export function AnalyticsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL')
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false)
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null)
+  const [dropdownAlign, setDropdownAlign] = useState<'left' | 'right'>('left')
 
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     setEntries(getJournalEntries())
@@ -36,6 +38,29 @@ export function AnalyticsPage() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Detect available space and align dropdown accordingly
+  useEffect(() => {
+    if (!isDropdownOpen || !triggerRef.current) return
+
+    const timer = setTimeout(() => {
+      if (!triggerRef.current) return
+      const triggerRect = triggerRef.current.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const popoverWidth = 280
+
+      const spaceOnRight = viewportWidth - triggerRect.right
+      const spaceOnLeft = triggerRect.left
+
+      if (spaceOnRight < popoverWidth && spaceOnLeft > spaceOnRight) {
+        setDropdownAlign('right')
+      } else {
+        setDropdownAlign('left')
+      }
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [isDropdownOpen])
 
   // Generate ALL available Years dynamically + past range so all years are visible
   const availableYears = useMemo(() => {
@@ -222,6 +247,7 @@ export function AnalyticsPage() {
         {/* Date Dropdown Component */}
         <div className="date-dropdown-container" ref={dropdownRef}>
           <button
+            ref={triggerRef}
             className={`date-dropdown-trigger ${isDropdownOpen ? 'open' : ''}`}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
@@ -240,7 +266,7 @@ export function AnalyticsPage() {
           {isDropdownOpen && (
             <>
               <div className="dropdown-backdrop-overlay" onClick={() => setIsDropdownOpen(false)} />
-              <div className="date-dropdown-popover">
+              <div className={`date-dropdown-popover align-${dropdownAlign}`}>
               {/* Presets Row */}
               <div className="popover-section">
                 <div className="popover-section-label">Quick Presets</div>
