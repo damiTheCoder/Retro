@@ -37,10 +37,15 @@ def delete_chat_thread(thread_id: str, db: Session = Depends(get_db)):
 
 @router.post("/messages", response_model=ChatMessageResponse)
 async def send_chat_message(req: ChatMessageCreate, db: Session = Depends(get_db)):
-    thread = db.query(ChatThreadModel).filter(ChatThreadModel.id == req.thread_id).first()
+    thread_id = req.thread_id or "thread-default"
+    msg_text = req.text or req.message or ""
+    if not msg_text:
+        raise HTTPException(status_code=400, detail="Message text is required")
+
+    thread = db.query(ChatThreadModel).filter(ChatThreadModel.id == thread_id).first()
     if not thread:
         # Create thread if it doesn't exist
-        thread = ChatThreadModel(id=req.thread_id, title="New Strategy Chat")
+        thread = ChatThreadModel(id=thread_id, title="New Strategy Chat")
         db.add(thread)
         db.commit()
         db.refresh(thread)
@@ -50,16 +55,16 @@ async def send_chat_message(req: ChatMessageCreate, db: Session = Depends(get_db
     now_str = time.strftime("%I:%M %p")
     user_msg = ChatMessageModel(
         id=user_msg_id,
-        thread_id=req.thread_id,
+        thread_id=thread_id,
         sender="user",
-        text=req.text,
+        text=msg_text,
         timestamp=now_str
     )
     db.add(user_msg)
     db.commit()
 
     # 2. Gather conversation history for context
-    db_messages = db.query(ChatMessageModel).filter(ChatMessageModel.thread_id == req.thread_id).order_by(ChatMessageModel.created_at.asc()).all()
+    db_messages = db.query(ChatMessageModel).filter(ChatMessageModel.thread_id == thread_id).order_by(ChatMessageModel.created_at.asc()).all()
     history = []
     for m in db_messages:
         role = "user" if m.sender == "user" else "assistant"
@@ -79,7 +84,7 @@ async def send_chat_message(req: ChatMessageCreate, db: Session = Depends(get_db
     ai_msg_id = f"msg-{uuid.uuid4().hex[:10]}"
     ai_msg = ChatMessageModel(
         id=ai_msg_id,
-        thread_id=req.thread_id,
+        thread_id=thread_id,
         sender="ai",
         text=assistant_reply_text,
         timestamp=time.strftime("%I:%M %p")

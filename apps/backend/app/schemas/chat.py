@@ -3,8 +3,9 @@ from typing import List, Optional
 from datetime import datetime
 
 class ChatMessageCreate(BaseModel):
-    thread_id: str
-    text: str
+    thread_id: Optional[str] = "thread-default"
+    text: Optional[str] = None
+    message: Optional[str] = None
     active_page: Optional[str] = "aichat"
 
 class ChatMessageResponse(BaseModel):

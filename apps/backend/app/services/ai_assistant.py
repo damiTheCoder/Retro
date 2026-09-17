@@ -86,14 +86,15 @@ async def generate_ai_response(
                                 content_piece = delta.get("content", "")
                                 if content_piece:
                                     full_text_chunks.append(content_piece)
-                            except Exception:
+                            except Exception as parse_err:
+                                print(f"[OpenRouter Stream Parse Warning]: {parse_err}")
                                 continue
 
                     accumulated_response = "".join(full_text_chunks).strip().replace("**", "")
                     if accumulated_response:
                         return accumulated_response
                     else:
-                        return "Chart Rabbit AI has analyzed your market query and journal history. Maintain strict risk management across all executions."
+                        raise Exception("OpenRouter API returned empty response content.")
 
         except httpx.TimeoutException:
             if attempt < max_retries:
@@ -101,6 +102,7 @@ async def generate_ai_response(
                 continue
             raise Exception("AI provider request timed out (120s limit reached). Please try again.")
         except Exception as e:
+            print(f"[AI Assistant Error] Attempt {attempt + 1}: {e}")
             if "429" in str(e) and attempt < max_retries:
                 await asyncio.sleep(backoff_delays[attempt])
                 continue
