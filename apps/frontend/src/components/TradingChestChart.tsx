@@ -93,7 +93,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   const [showToast, setShowToast] = useState<string | null>(null)
 
   // Interactive Order Execution Panel State
-  const [touchLogs, setTouchLogs] = useState<string[]>([])
   const [showOrderPanel, setShowOrderPanel] = useState(false)
   const [tradeDirection, setTradeDirection] = useState<'LONG' | 'SHORT'>('LONG')
   const [entryPrice, setEntryPrice] = useState<number>(84200)
@@ -776,16 +775,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const isInteractiveUI = target.closest(
         'button, input, select, a, .klinecharts-pro-replay-bar, .replay-top-bar, .auto-document-logo-btn, .klinecharts-pro-period-bar, .klinecharts-pro-drawing-bar, .klinecharts-pro-modal, .klinecharts-pro-overlay-property-bar, .klinecharts-pro-pane-separator, .klinecharts-pro-separator, [class*="pane-separator"], [class*="separator"]'
       )
-      const t = e.target as HTMLElement
-      setTouchLogs(prev => [
-        `[${new Date().toLocaleTimeString()}] touchstart target=${t.tagName} class=${(t.className || '').toString().slice(0, 30)} isUI=${!!isInteractiveUI}`,
-        ...prev.slice(0, 9)
-      ])
-      console.log('TOUCH PROXY touchstart', {
-        targetTag: (e.target as HTMLElement).tagName,
-        targetClass: (e.target as HTMLElement).className,
-        isInteractiveUI: !!isInteractiveUI,
-      })
       if (isInteractiveUI) return
 
       activeTouchId = touch.identifier
@@ -799,11 +788,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
 
     const onTouchMove = (e: TouchEvent) => {
-      const t = e.target as HTMLElement
-      setTouchLogs(prev => [
-        `[${new Date().toLocaleTimeString()}] touchmove target=${t.tagName} class=${(t.className || '').toString().slice(0, 30)}`,
-        ...prev.slice(0, 9)
-      ])
       if (!isTouchActive || activeTouchId === null || !touchStartTarget) return
       const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchId)
       if (!touch) return
@@ -820,11 +804,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
 
     const onTouchEnd = (e: TouchEvent) => {
-      const t = e.target as HTMLElement
-      setTouchLogs(prev => [
-        `[${new Date().toLocaleTimeString()}] touchend target=${t.tagName} class=${(t.className || '').toString().slice(0, 30)}`,
-        ...prev.slice(0, 9)
-      ])
       if (!isTouchActive || activeTouchId === null || !touchStartTarget) return
       const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchId)
       if (!touch) return
@@ -1000,31 +979,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
   return (
     <div className="tradingchest-wrapper">
-      <div
-        style={{
-          position: 'fixed',
-          top: '8px',
-          left: '8px',
-          right: '8px',
-          maxHeight: '180px',
-          overflowY: 'auto',
-          background: 'rgba(0,0,0,0.85)',
-          color: '#00ff88',
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          padding: '6px',
-          borderRadius: '6px',
-          zIndex: 9999999,
-          pointerEvents: 'none',
-        }}
-      >
-        <div style={{ color: '#fff', fontWeight: 'bold', marginBottom: '4px' }}>
-          TOUCH DEBUG ({touchLogs.length} events)
-        </div>
-        {touchLogs.map((log, i) => (
-          <div key={i}>{log}</div>
-        ))}
-      </div>
 
       {/* Draggable Icon-Only Green Logo Button inside chart area */}
       <button
