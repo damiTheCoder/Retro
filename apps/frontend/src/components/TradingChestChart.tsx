@@ -327,6 +327,14 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
           }
           return true
         }
+        if (typeof curr.$$input === 'function') {
+          try {
+            curr.$$input(e || new Event('input', { bubbles: true, cancelable: true }))
+          } catch (err) {
+            console.error('$$input error:', err)
+          }
+          return true
+        }
         curr = curr.parentNode || curr.host
       }
       return false
@@ -441,8 +449,16 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       handleUpdateDropdownPositions()
     }
 
+    const onInput = (e: Event) => {
+      const target = e.target as HTMLElement
+      if (target && target.tagName === 'INPUT') {
+        triggerSolidClick(target, e)
+      }
+    }
+
     if (containerEl) {
       containerEl.addEventListener('click', onClick)
+      containerEl.addEventListener('input', onInput, { capture: true, passive: true })
       containerEl.addEventListener('touchend', onDrawingBarTouchEnd, { passive: true })
       containerEl.addEventListener('scroll', onScroll, { capture: true, passive: true })
     }
@@ -492,11 +508,17 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]')
 
       if (buttonTarget) {
-        triggerSolidClick(target, e)
+        const handled = triggerSolidClick(target, e)
+        if (!handled && typeof (target as any).click === 'function') {
+          (target as any).click()
+        }
         return
       }
 
-      if (isInput) return
+      if (isInput) {
+        triggerSolidClick(target, e)
+        return
+      }
 
       const clientX = 'touches' in e && e.touches[0] ? e.touches[0].clientX : (e as MouseEvent).clientX || 0
       const clientY = 'touches' in e && e.touches[0] ? e.touches[0].clientY : (e as MouseEvent).clientY || 0
