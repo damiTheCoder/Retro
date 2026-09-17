@@ -93,6 +93,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   const [showToast, setShowToast] = useState<string | null>(null)
 
   // Interactive Order Execution Panel State
+  const [touchLogs, setTouchLogs] = useState<string[]>([])
   const [showOrderPanel, setShowOrderPanel] = useState(false)
   const [tradeDirection, setTradeDirection] = useState<'LONG' | 'SHORT'>('LONG')
   const [entryPrice, setEntryPrice] = useState<number>(84200)
@@ -220,315 +221,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       datafeed,
     })
 
-    // Override the built-in longPosition to have custom styling and native 3-click behavior
-    registerOverlay({
-      name: 'longPosition',
-      totalStep: 4,
-      needDefaultPointFigure: true,
-      needDefaultXAxisFigure: true,
-      needDefaultYAxisFigure: true,
-      createPointFigures: ({ coordinates, overlay, precision }) => {
-        if (coordinates.length < 2) return []
 
-        const points = overlay.points
-        const entryX = coordinates[0].x
-        const entryY = coordinates[0].y
-        const exitX = coordinates[1].x
-        const slY = coordinates[1].y
-
-        const slColor = 'rgba(239, 83, 80, 0.15)'
-        const slLineColor = 'rgba(239, 83, 80, 0.6)'
-        const tpColor = 'rgba(38, 166, 154, 0.15)'
-        const tpLineColor = 'rgba(38, 166, 154, 0.6)'
-
-        const figures = []
-
-        // 1. Draw Stop Loss Box
-        figures.push({
-          type: 'polygon',
-          ignoreEvent: true,
-          attrs: { coordinates: [{x: entryX, y: entryY}, {x: exitX, y: entryY}, {x: exitX, y: slY}, {x: entryX, y: slY}] },
-          styles: { style: 'fill', color: slColor }
-        })
-        figures.push({
-          type: 'line', ignoreEvent: true,
-          attrs: { coordinates: [{x: entryX, y: slY}, {x: exitX, y: slY}] },
-          styles: { color: slLineColor }
-        })
-
-        // 3. Draw Entry Line
-        figures.push({
-          type: 'line',
-          attrs: { coordinates: [{x: entryX, y: entryY}, {x: exitX, y: entryY}] },
-          styles: { color: '#1677FF', style: 'dashed' }
-        })
-
-        // 4. Add SL Text Label
-        if (points[0]?.value !== undefined && points[1]?.value !== undefined) {
-          const slPrice = points[1].value
-          const entryPrice = points[0].value
-          const slDiff = Math.abs(entryPrice - slPrice)
-
-          console.log('LABEL DEBUG SL', {
-            pointsLen: points.length,
-            entryPrice: points[0]?.value,
-            slPrice: points[1]?.value,
-            entryX,
-            entryY,
-            slY,
-            exitX,
-            precision,
-          })
-
-          figures.push({
-            type: 'rectText', ignoreEvent: true,
-            attrs: { x: exitX, y: (entryY + slY) / 2, text: `SL: ${slPrice.toFixed(precision.price)} (-${slDiff.toFixed(precision.price)})`, baseline: 'middle', align: 'left' },
-            styles: { color: 'rgba(239, 83, 80, 1)', size: 11 }
-          })
-        }
-
-        let tpY = entryY
-        // 2. Draw Take Profit Box (if point exists)
-        if (coordinates.length > 2 && points.length > 2) {
-          tpY = coordinates[2].y
-          figures.push({
-            type: 'polygon',
-            ignoreEvent: true,
-            attrs: { coordinates: [{x: entryX, y: entryY}, {x: exitX, y: entryY}, {x: exitX, y: tpY}, {x: entryX, y: tpY}] },
-            styles: { style: 'fill', color: tpColor }
-          })
-          figures.push({
-            type: 'line', ignoreEvent: true,
-            attrs: { coordinates: [{x: entryX, y: tpY}, {x: exitX, y: tpY}] },
-            styles: { color: tpLineColor }
-          })
-          
-          if (points[0]?.value !== undefined && points[1]?.value !== undefined && points[2]?.value !== undefined) {
-            const entryPrice = points[0].value
-            const slPrice = points[1].value
-            const tpPrice = points[2].value
-            const slDiff = Math.abs(entryPrice - slPrice)
-            const tpDiff = Math.abs(tpPrice - entryPrice)
-            const rr = slDiff > 0 ? (tpDiff / slDiff).toFixed(2) : '--'
-
-            console.log('LABEL DEBUG TP', {
-              pointsLen: points.length,
-              entryPrice: points[0]?.value,
-              slPrice: points[1]?.value,
-              tpPrice: points[2]?.value,
-              entryX,
-              entryY,
-              slY,
-              tpY,
-              exitX,
-              precision,
-            })
-
-            figures.push({
-              type: 'rectText', ignoreEvent: true,
-              attrs: { x: exitX, y: (entryY + tpY) / 2, text: `TP: ${tpPrice.toFixed(precision.price)} (+${tpDiff.toFixed(precision.price)})`, baseline: 'middle', align: 'left' },
-              styles: { color: 'rgba(38, 166, 154, 1)', size: 11 }
-            })
-            figures.push({
-              type: 'rectText', ignoreEvent: true,
-              attrs: { x: (entryX + exitX) / 2, y: entryY - 16, text: `R/R: 1:${rr}`, baseline: 'bottom', align: 'center' },
-              styles: { style: 'stroke_fill', color: '#1677FF', backgroundColor: 'rgba(22, 119, 255, 0.1)', borderColor: 'rgba(22, 119, 255, 0.4)', borderSize: 1, borderRadius: 3, paddingLeft: 6, paddingRight: 6, paddingTop: 2, paddingBottom: 2, size: 12 }
-            })
-          }
-        }
-
-        // Keep custom decorative handles
-        figures.push({
-          type: 'circle', ignoreEvent: true,
-          attrs: { x: entryX, y: entryY, r: 5 },
-          styles: { color: '#1677FF', borderColor: '#fff', borderSize: 2 }
-        })
-        figures.push({
-          type: 'circle', ignoreEvent: true,
-          attrs: { x: (entryX + exitX) / 2, y: slY, r: 5 },
-          styles: { color: '#ef5350', borderColor: '#fff', borderSize: 2 }
-        })
-        if (coordinates.length > 2) {
-          figures.push({
-            type: 'circle', ignoreEvent: true,
-            attrs: { x: (entryX + exitX) / 2, y: tpY, r: 5 },
-            styles: { color: '#26a69a', borderColor: '#fff', borderSize: 2 }
-          })
-        }
-        figures.push({
-          type: 'circle', ignoreEvent: true,
-          attrs: { x: exitX, y: entryY, r: 5 },
-          styles: { color: '#1677FF', borderColor: '#fff', borderSize: 2 }
-        })
-
-        return figures
-      },
-      performEventPressedMove: ({ points, performPointIndex, performPoint }) => {
-        if (performPointIndex === 0) {
-          points[0].value = performPoint.value
-          points[0].timestamp = performPoint.timestamp
-        } else if (performPointIndex === 1) {
-          points[1].value = performPoint.value
-        } else if (performPointIndex === 2) {
-          points[2].value = performPoint.value
-        }
-        return true
-      }
-    })
-
-    // Override the built-in shortPosition to match our longPosition improvements but inverted
-    registerOverlay({
-      name: 'shortPosition',
-      totalStep: 4,
-      needDefaultPointFigure: true,
-      needDefaultXAxisFigure: true,
-      needDefaultYAxisFigure: true,
-      createPointFigures: ({ coordinates, overlay, precision }) => {
-        if (coordinates.length < 2) return []
-
-        const points = overlay.points
-        const entryX = coordinates[0].x
-        const entryY = coordinates[0].y
-        const exitX = coordinates[1].x
-        const slY = coordinates[1].y
-
-        const slColor = 'rgba(239, 83, 80, 0.15)'
-        const slLineColor = 'rgba(239, 83, 80, 0.6)'
-        const tpColor = 'rgba(38, 166, 154, 0.15)'
-        const tpLineColor = 'rgba(38, 166, 154, 0.6)'
-
-        const figures = []
-
-        // 1. Draw Stop Loss Box (Top for shorts)
-        figures.push({
-          type: 'polygon', ignoreEvent: true,
-          attrs: { coordinates: [{x: entryX, y: entryY}, {x: exitX, y: entryY}, {x: exitX, y: slY}, {x: entryX, y: slY}] },
-          styles: { style: 'fill', color: slColor }
-        })
-        figures.push({
-          type: 'line', ignoreEvent: true,
-          attrs: { coordinates: [{x: entryX, y: slY}, {x: exitX, y: slY}] },
-          styles: { color: slLineColor }
-        })
-
-        // 3. Draw Entry Line
-        figures.push({
-          type: 'line',
-          attrs: { coordinates: [{x: entryX, y: entryY}, {x: exitX, y: entryY}] },
-          styles: { color: '#1677FF', style: 'dashed' }
-        })
-
-        // 4. Add SL Text Labels
-        if (points[0]?.value !== undefined && points[1]?.value !== undefined) {
-          const slPrice = points[1].value
-          const entryPrice = points[0].value
-          const slDiff = Math.abs(slPrice - entryPrice)
-
-          console.log('LABEL DEBUG SL', {
-            pointsLen: points.length,
-            entryPrice: points[0]?.value,
-            slPrice: points[1]?.value,
-            entryX,
-            entryY,
-            slY,
-            exitX,
-            precision,
-          })
-
-          figures.push({
-            type: 'rectText', ignoreEvent: true,
-            attrs: { x: exitX, y: (entryY + slY) / 2, text: `SL: ${slPrice.toFixed(precision.price)} (-${slDiff.toFixed(precision.price)})`, baseline: 'middle', align: 'left' },
-            styles: { color: 'rgba(239, 83, 80, 1)', size: 11 }
-          })
-        }
-
-        let tpY = entryY
-        // 2. Draw Take Profit Box (Bottom for shorts)
-        if (coordinates.length > 2 && points.length > 2) {
-          tpY = coordinates[2].y
-          figures.push({
-            type: 'polygon', ignoreEvent: true,
-            attrs: { coordinates: [{x: entryX, y: entryY}, {x: exitX, y: entryY}, {x: exitX, y: tpY}, {x: entryX, y: tpY}] },
-            styles: { style: 'fill', color: tpColor }
-          })
-          figures.push({
-            type: 'line', ignoreEvent: true,
-            attrs: { coordinates: [{x: entryX, y: tpY}, {x: exitX, y: tpY}] },
-            styles: { color: tpLineColor }
-          })
-          
-          if (points[0]?.value !== undefined && points[1]?.value !== undefined && points[2]?.value !== undefined) {
-            const entryPrice = points[0].value
-            const slPrice = points[1].value
-            const tpPrice = points[2].value
-            const slDiff = Math.abs(slPrice - entryPrice)
-            const tpDiff = Math.abs(entryPrice - tpPrice)
-            const rr = slDiff > 0 ? (tpDiff / slDiff).toFixed(2) : '--'
-
-            console.log('LABEL DEBUG TP', {
-              pointsLen: points.length,
-              entryPrice: points[0]?.value,
-              slPrice: points[1]?.value,
-              tpPrice: points[2]?.value,
-              entryX,
-              entryY,
-              slY,
-              tpY,
-              exitX,
-              precision,
-            })
-
-            figures.push({
-              type: 'rectText', ignoreEvent: true,
-              attrs: { x: exitX, y: (entryY + tpY) / 2, text: `TP: ${tpPrice.toFixed(precision.price)} (+${tpDiff.toFixed(precision.price)})`, baseline: 'middle', align: 'left' },
-              styles: { color: 'rgba(38, 166, 154, 1)', size: 11 }
-            })
-            figures.push({
-              type: 'rectText', ignoreEvent: true,
-              attrs: { x: (entryX + exitX) / 2, y: entryY + 16, text: `R/R: 1:${rr}`, baseline: 'top', align: 'center' },
-              styles: { style: 'stroke_fill', color: '#1677FF', backgroundColor: 'rgba(22, 119, 255, 0.1)', borderColor: 'rgba(22, 119, 255, 0.4)', borderSize: 1, borderRadius: 3, paddingLeft: 6, paddingRight: 6, paddingTop: 2, paddingBottom: 2, size: 12 }
-            })
-          }
-        }
-
-        // Keep custom decorative handles
-        figures.push({
-          type: 'circle', ignoreEvent: true,
-          attrs: { x: entryX, y: entryY, r: 5 },
-          styles: { color: '#1677FF', borderColor: '#fff', borderSize: 2 }
-        })
-        figures.push({
-          type: 'circle', ignoreEvent: true,
-          attrs: { x: (entryX + exitX) / 2, y: slY, r: 5 },
-          styles: { color: '#ef5350', borderColor: '#fff', borderSize: 2 }
-        })
-        if (coordinates.length > 2) {
-          figures.push({
-            type: 'circle', ignoreEvent: true,
-            attrs: { x: (entryX + exitX) / 2, y: tpY, r: 5 },
-            styles: { color: '#26a69a', borderColor: '#fff', borderSize: 2 }
-          })
-        }
-        figures.push({
-          type: 'circle', ignoreEvent: true,
-          attrs: { x: exitX, y: entryY, r: 5 },
-          styles: { color: '#1677FF', borderColor: '#fff', borderSize: 2 }
-        })
-
-        return figures
-      },
-      performEventPressedMove: ({ points, performPointIndex, performPoint }) => {
-        if (performPointIndex === 0) {
-          points[0].value = performPoint.value
-          points[0].timestamp = performPoint.timestamp
-        } else if (performPointIndex === 1) {
-          points[1].value = performPoint.value
-        } else if (performPointIndex === 2) {
-          points[2].value = performPoint.value
-        }
-        return true
-      }
-    })
 
     const chartWidget = chart.getChart()
     if (chartWidget) {
@@ -1083,6 +776,16 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const isInteractiveUI = target.closest(
         'button, input, select, a, .klinecharts-pro-replay-bar, .replay-top-bar, .auto-document-logo-btn, .klinecharts-pro-period-bar, .klinecharts-pro-drawing-bar, .klinecharts-pro-modal, .klinecharts-pro-overlay-property-bar, .klinecharts-pro-pane-separator, .klinecharts-pro-separator, [class*="pane-separator"], [class*="separator"]'
       )
+      const t = e.target as HTMLElement
+      setTouchLogs(prev => [
+        `[${new Date().toLocaleTimeString()}] touchstart target=${t.tagName} class=${(t.className || '').toString().slice(0, 30)} isUI=${!!isInteractiveUI}`,
+        ...prev.slice(0, 9)
+      ])
+      console.log('TOUCH PROXY touchstart', {
+        targetTag: (e.target as HTMLElement).tagName,
+        targetClass: (e.target as HTMLElement).className,
+        isInteractiveUI: !!isInteractiveUI,
+      })
       if (isInteractiveUI) return
 
       activeTouchId = touch.identifier
@@ -1096,6 +799,11 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
 
     const onTouchMove = (e: TouchEvent) => {
+      const t = e.target as HTMLElement
+      setTouchLogs(prev => [
+        `[${new Date().toLocaleTimeString()}] touchmove target=${t.tagName} class=${(t.className || '').toString().slice(0, 30)}`,
+        ...prev.slice(0, 9)
+      ])
       if (!isTouchActive || activeTouchId === null || !touchStartTarget) return
       const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchId)
       if (!touch) return
@@ -1112,6 +820,11 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
 
     const onTouchEnd = (e: TouchEvent) => {
+      const t = e.target as HTMLElement
+      setTouchLogs(prev => [
+        `[${new Date().toLocaleTimeString()}] touchend target=${t.tagName} class=${(t.className || '').toString().slice(0, 30)}`,
+        ...prev.slice(0, 9)
+      ])
       if (!isTouchActive || activeTouchId === null || !touchStartTarget) return
       const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchId)
       if (!touch) return
@@ -1287,8 +1000,31 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
   return (
     <div className="tradingchest-wrapper">
-
-
+      <div
+        style={{
+          position: 'fixed',
+          top: '8px',
+          left: '8px',
+          right: '8px',
+          maxHeight: '180px',
+          overflowY: 'auto',
+          background: 'rgba(0,0,0,0.85)',
+          color: '#00ff88',
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          padding: '6px',
+          borderRadius: '6px',
+          zIndex: 9999999,
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{ color: '#fff', fontWeight: 'bold', marginBottom: '4px' }}>
+          TOUCH DEBUG ({touchLogs.length} events)
+        </div>
+        {touchLogs.map((log, i) => (
+          <div key={i}>{log}</div>
+        ))}
+      </div>
 
       {/* Draggable Icon-Only Green Logo Button inside chart area */}
       <button
