@@ -103,10 +103,10 @@
 }
 
 .klinecharts-pro-drawing-bar .item .icon-arrow {
-  display: none !important;
-  visibility: hidden !important;
-  width: 0 !important;
-  height: 0 !important;
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
   pointer-events: none !important;
 }
 
@@ -168,6 +168,21 @@
 /* Tooltip on hover */
 .klinecharts-pro-drawing-bar .item[title]:hover:after {
   z-index: 999999 !important;
+  bottom: 100% !important;     /* above the icon */
+  top: auto !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  margin-bottom: 8px !important;
+  margin-left: 0 !important;
+  white-space: nowrap !important;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .klinecharts-pro-drawing-bar .item[title]:hover:after,
+  .klinecharts-pro-drawing-bar .item[title]:after {
+    display: none !important;
+  }
 }
 
 /* Floating Overlay Property Bar (Trash/Delete, Colors, Line Thickness, Settings) */

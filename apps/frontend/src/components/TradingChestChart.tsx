@@ -419,6 +419,13 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
           return
         }
 
+        const arrow = itemEl.querySelector('.icon-arrow') as HTMLElement
+        if (arrow) {
+          arrow.dispatchEvent(new MouseEvent('click', { 
+            bubbles: true, cancelable: true, view: window 
+          }))
+        }
+
         lastToolTapTime = now
         requestAnimationFrame(handleUpdateDropdownPositions)
         setTimeout(handleUpdateDropdownPositions, 30)
