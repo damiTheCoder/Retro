@@ -34,6 +34,12 @@ function createPositionFigures(
   const entryPrice = entryPoint.value
   const currentStep = overlay.currentStep ?? 3
 
+  console.log('ANCHOR CHECK', {
+    entryDataIndex: overlay.points[0]?.dataIndex,
+    entryTimestamp: overlay.points[0]?.timestamp,
+    currentStep: overlay.currentStep,
+  })
+
   const canvasWidth = bounding?.width ?? 1000
   const canvasHeight = bounding?.height ?? 500
 
@@ -54,11 +60,11 @@ function createPositionFigures(
   // 2. Calculate x0 (X pixel position for Entry Point)
   let x0: number | undefined = coordinates?.[0]?.x
   if ((x0 == null || isNaN(x0)) && xAxis && typeof xAxis.convertToPixel === 'function' && entryPoint) {
-    if (entryPoint.dataIndex != null) {
-      const px = xAxis.convertToPixel(entryPoint.dataIndex)
-      if (px != null && !isNaN(px)) x0 = px
-    } else if (entryPoint.timestamp != null) {
+    if (entryPoint.timestamp != null) {
       const px = xAxis.convertToPixel(entryPoint.timestamp)
+      if (px != null && !isNaN(px)) x0 = px
+    } else if (entryPoint.dataIndex != null) {
+      const px = xAxis.convertToPixel(entryPoint.dataIndex)
       if (px != null && !isNaN(px)) x0 = px
     }
   }
@@ -82,22 +88,22 @@ function createPositionFigures(
 
     if ((x1 == null || isNaN(x1)) && xAxis && typeof xAxis.convertToPixel === 'function' && overlay.points[1]) {
       const pt1 = overlay.points[1]
-      if (pt1.dataIndex != null) {
-        const px = xAxis.convertToPixel(pt1.dataIndex)
-        if (px != null && !isNaN(px)) x1 = px
-      } else if (pt1.timestamp != null) {
+      if (pt1.timestamp != null) {
         const px = xAxis.convertToPixel(pt1.timestamp)
+        if (px != null && !isNaN(px)) x1 = px
+      } else if (pt1.dataIndex != null) {
+        const px = xAxis.convertToPixel(pt1.dataIndex)
         if (px != null && !isNaN(px)) x1 = px
       }
     }
 
     if ((x2 == null || isNaN(x2)) && xAxis && typeof xAxis.convertToPixel === 'function' && overlay.points[2]) {
       const pt2 = overlay.points[2]
-      if (pt2.dataIndex != null) {
-        const px = xAxis.convertToPixel(pt2.dataIndex)
-        if (px != null && !isNaN(px)) x2 = px
-      } else if (pt2.timestamp != null) {
+      if (pt2.timestamp != null) {
         const px = xAxis.convertToPixel(pt2.timestamp)
+        if (px != null && !isNaN(px)) x2 = px
+      } else if (pt2.dataIndex != null) {
+        const px = xAxis.convertToPixel(pt2.dataIndex)
         if (px != null && !isNaN(px)) x2 = px
       }
     }
@@ -222,6 +228,12 @@ function createPositionFigures(
       styles: { color: '#ffffff', size: 11, family: 'sans-serif', weight: '600', backgroundColor: 'transparent' },
     })
 
+    figures.push({
+      type: 'circle',
+      attrs: { x: centerX, y: yTarget, r: 6 },
+      styles: { color: '#00a68c', borderColor: '#ffffff', borderSize: 2 }
+    })
+
     return figures
   }
 
@@ -247,7 +259,7 @@ function createPositionFigures(
     if (currentStep === 2 && coordinates?.[2]?.y != null && !isNaN(coordinates[2].y) && yAxis && typeof yAxis.convertFromPixel === 'function') {
       stopPrice = yAxis.convertFromPixel(coordinates[2].y)
     } else {
-      stopPrice = isLong ? entryPrice * 0.952 : entryPrice * 1.048
+      stopPrice = isLong ? entryPrice * 0.98 : entryPrice * 1.02
     }
   }
 
@@ -507,13 +519,34 @@ function createPositionFigures(
     },
   })
 
+  console.log('POSITION FIGURES DEBUG', {
+    currentStep: overlay.currentStep,
+    points: overlay.points,
+    coordinates: coordinates,
+    yEntry,
+    yTarget,
+    yStop,
+  })
+
+  figures.push({
+    type: 'circle',
+    attrs: { x: centerX, y: yTarget, r: 6 },
+    styles: { color: '#00a68c', borderColor: '#ffffff', borderSize: 2 }
+  })
+
+  figures.push({
+    type: 'circle',
+    attrs: { x: centerX, y: yStop, r: 6 },
+    styles: { color: '#c62828', borderColor: '#ffffff', borderSize: 2 }
+  })
+
   return figures
 }
 
 export function registerPositionOverlays(): void {
   registerOverlay({
     name: 'longPosition',
-    totalStep: 3,
+    totalStep: 4,
     needDefaultPointFigure: true,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
@@ -530,11 +563,37 @@ export function registerPositionOverlays(): void {
       },
     },
     createPointFigures: (params) => createPositionFigures(params, true),
+    performEventMoveForDrawing: ({ points }) => {
+      points.forEach(p => {
+        if (p.timestamp != null && p.dataIndex != null) {
+          delete p.dataIndex
+        }
+      })
+      return true
+    },
+    performEventPressedMove: ({ points, performPointIndex, performPoint }) => {
+      points.forEach(p => {
+        if (p.timestamp != null && p.dataIndex != null) {
+          delete p.dataIndex
+        }
+      })
+      if (performPointIndex === 0) {
+        points[0].value = performPoint.value
+        points[0].timestamp = performPoint.timestamp
+      }
+      if (performPointIndex === 1) {
+        points[1].value = performPoint.value
+      }
+      if (performPointIndex === 2) {
+        points[2].value = performPoint.value
+      }
+      return true
+    },
   })
 
   registerOverlay({
     name: 'shortPosition',
-    totalStep: 3,
+    totalStep: 4,
     needDefaultPointFigure: true,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
@@ -551,5 +610,31 @@ export function registerPositionOverlays(): void {
       },
     },
     createPointFigures: (params) => createPositionFigures(params, false),
+    performEventMoveForDrawing: ({ points }) => {
+      points.forEach(p => {
+        if (p.timestamp != null && p.dataIndex != null) {
+          delete p.dataIndex
+        }
+      })
+      return true
+    },
+    performEventPressedMove: ({ points, performPointIndex, performPoint }) => {
+      points.forEach(p => {
+        if (p.timestamp != null && p.dataIndex != null) {
+          delete p.dataIndex
+        }
+      })
+      if (performPointIndex === 0) {
+        points[0].value = performPoint.value
+        points[0].timestamp = performPoint.timestamp
+      }
+      if (performPointIndex === 1) {
+        points[1].value = performPoint.value
+      }
+      if (performPointIndex === 2) {
+        points[2].value = performPoint.value
+      }
+      return true
+    },
   })
 }
