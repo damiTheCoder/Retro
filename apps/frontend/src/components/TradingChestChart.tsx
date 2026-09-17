@@ -84,12 +84,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   const [error, setError] = useState<string | null>(null)
   const [stockErrorMessage, setStockErrorMessage] = useState<string | null>(null)
 
-  // Debug logs for replay slider
-  const [debugLogs, setDebugLogs] = useState<string[]>([])
-  const addDebugLog = (msg: string) => {
-    const time = new Date().toISOString().split('T')[1].slice(0, 8)
-    setDebugLogs((prev) => [`[${time}] ${msg}`, ...prev].slice(0, 10))
-  }
+
 
 
 
@@ -587,18 +582,18 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
         isDragging = false
         dragTarget = null
-        window.removeEventListener('mousemove', handlePointerMove)
-        window.removeEventListener('mouseup', handlePointerUp)
-        window.removeEventListener('touchmove', handlePointerMove)
-        window.removeEventListener('touchend', handlePointerUp)
-        window.removeEventListener('touchcancel', handlePointerUp)
+        window.removeEventListener('mousemove', handlePointerMove, { capture: true })
+        window.removeEventListener('mouseup', handlePointerUp, { capture: true })
+        window.removeEventListener('touchmove', handlePointerMove, { capture: true })
+        window.removeEventListener('touchend', handlePointerUp, { capture: true })
+        window.removeEventListener('touchcancel', handlePointerUp, { capture: true })
       }
 
-      window.addEventListener('mousemove', handlePointerMove, { passive: false })
-      window.addEventListener('mouseup', handlePointerUp)
-      window.addEventListener('touchmove', handlePointerMove, { passive: false })
-      window.addEventListener('touchend', handlePointerUp, { passive: false })
-      window.addEventListener('touchcancel', handlePointerUp, { passive: false })
+      window.addEventListener('mousemove', handlePointerMove, { passive: false, capture: true })
+      window.addEventListener('mouseup', handlePointerUp, { capture: true })
+      window.addEventListener('touchmove', handlePointerMove, { passive: false, capture: true })
+      window.addEventListener('touchend', handlePointerUp, { passive: false, capture: true })
+      window.addEventListener('touchcancel', handlePointerUp, { passive: false, capture: true })
     }
 
     document.addEventListener('mousedown', handlePointerDown)
@@ -643,6 +638,11 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const touch = e.touches[0]
       const target = document.elementFromPoint(touch.clientX, touch.clientY)
       if (!target || !container.contains(target)) return
+
+      const isInteractiveUI = target.closest(
+        'button, input, select, a, .klinecharts-pro-replay-bar, .replay-top-bar, .auto-document-logo-btn, .klinecharts-pro-period-bar, .klinecharts-pro-drawing-bar, .klinecharts-pro-modal, .klinecharts-pro-overlay-property-bar'
+      )
+      if (isInteractiveUI) return
 
       const isSeparator = target.classList.contains('klinecharts-pro-pane-separator') ||
                           target.classList.contains('klinecharts-pro-separator') ||
@@ -693,16 +693,16 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       isSeparatorTouch = false
     }
 
-    container.addEventListener('touchstart', onTouchStart, { passive: false })
-    window.addEventListener('touchmove', onTouchMove, { passive: false })
-    window.addEventListener('touchend', onTouchEnd)
-    window.addEventListener('touchcancel', onTouchEnd)
+    container.addEventListener('touchstart', onTouchStart, { passive: false, capture: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+    window.addEventListener('touchend', onTouchEnd, { capture: true })
+    window.addEventListener('touchcancel', onTouchEnd, { capture: true })
 
     return () => {
-      container.removeEventListener('touchstart', onTouchStart)
-      window.removeEventListener('touchmove', onTouchMove)
-      window.removeEventListener('touchend', onTouchEnd)
-      window.removeEventListener('touchcancel', onTouchEnd)
+      container.removeEventListener('touchstart', onTouchStart, { capture: true })
+      window.removeEventListener('touchmove', onTouchMove, { capture: true })
+      window.removeEventListener('touchend', onTouchEnd, { capture: true })
+      window.removeEventListener('touchcancel', onTouchEnd, { capture: true })
     }
   }, [])
 
@@ -948,106 +948,11 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     setShowOrderPanel(!showOrderPanel)
   }
 
-  useEffect(() => {
-    let cleanupFuncs: (() => void)[] = []
 
-    const attachSliderDebug = () => {
-      const slider = (containerRef.current?.querySelector(
-        '.replay-progress input[type=range], input[type=range]'
-      ) || document.querySelector(
-        '.klinecharts-pro-replay-bar input[type=range], .replay-top-bar input[type=range], .replay-progress input[type=range]'
-      )) as HTMLInputElement | null
-
-      if (!slider) {
-        addDebugLog('Slider: not found yet')
-        return
-      }
-
-      addDebugLog('Slider: found, attaching listeners')
-
-      const styles = window.getComputedStyle(slider)
-      addDebugLog(`Slider styles: touchAction=${styles.touchAction} pointerEvents=${styles.pointerEvents} display=${styles.display} visibility=${styles.visibility} opacity=${styles.opacity} width=${styles.width} height=${styles.height}`)
-
-      const rect = slider.getBoundingClientRect()
-      addDebugLog(`Slider rect: left=${Math.round(rect.left)} top=${Math.round(rect.top)} width=${Math.round(rect.width)} height=${Math.round(rect.height)}`)
-
-      const elementAtCenter = document.elementFromPoint(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2
-      )
-      addDebugLog(`Top element at slider center: <${elementAtCenter?.tagName} class="${elementAtCenter?.className}">`)
-
-      const logEvt = (type: string) => (e: Event) => {
-        const target = e.target as HTMLInputElement
-        addDebugLog(
-          `Slider ${type}: value=${target?.value} ` +
-          `defaultPrevented=${e.defaultPrevented} ` +
-          `cancelable=${e.cancelable}`
-        )
-      }
-
-      const events = [
-        'touchstart', 'touchmove', 'touchend', 'touchcancel',
-        'pointerdown', 'pointermove', 'pointerup',
-        'mousedown', 'input', 'change'
-      ]
-
-      events.forEach((evtName) => {
-        const handler = logEvt(evtName)
-        slider.addEventListener(evtName, handler, { capture: true })
-        cleanupFuncs.push(() => slider.removeEventListener(evtName, handler, { capture: true }))
-      })
-    }
-
-    const timer = setTimeout(attachSliderDebug, 1500)
-    const interval = setInterval(() => {
-      const slider = document.querySelector('.klinecharts-pro-replay-bar input[type=range], .replay-progress input[type=range]')
-      if (slider && cleanupFuncs.length === 0) {
-        attachSliderDebug()
-      }
-    }, 1000)
-
-    return () => {
-      clearTimeout(timer)
-      clearInterval(interval)
-      cleanupFuncs.forEach((fn) => fn())
-    }
-  }, [])
 
   return (
     <div className="tradingchest-wrapper">
-      {/* Replay Slider Debug Panel */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '10px',
-          left: '10px',
-          zIndex: 9999999,
-          background: 'rgba(0, 0, 0, 0.85)',
-          color: '#00ff66',
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          padding: '8px 10px',
-          borderRadius: '6px',
-          pointerEvents: 'none',
-          maxWidth: '340px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
-          lineHeight: '1.4'
-        }}
-      >
-        <div style={{ fontWeight: 'bold', color: '#ffffff', marginBottom: '4px', borderBottom: '1px solid #444', paddingBottom: '2px' }}>
-          🐛 Replay Slider Debug Log
-        </div>
-        {debugLogs.length === 0 ? (
-          <div style={{ color: '#888' }}>Waiting for replay slider element...</div>
-        ) : (
-          debugLogs.map((log, i) => (
-            <div key={i} style={{ wordBreak: 'break-all' }}>
-              {log}
-            </div>
-          ))
-        )}
-      </div>
+
 
 
       {/* Draggable Icon-Only Green Logo Button inside chart area */}
