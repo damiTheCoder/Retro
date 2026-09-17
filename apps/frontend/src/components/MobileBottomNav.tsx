@@ -2,6 +2,7 @@ import type { NavPage } from './Sidebar'
 import {
   CandlestickChartIcon,
   BookOpenIcon,
+  LineChartIcon,
   ChartLineUpIcon,
   MessageSquareIcon,
 } from './ShadcnIcons'
@@ -22,7 +23,7 @@ export function MobileBottomNav({
         className={`bottom-nav-item ${activePage === 'chart' ? 'active' : ''}`}
         onClick={() => onSelectPage('chart')}
       >
-        <CandlestickChartIcon className="nav-icon" />
+        <ChartLineUpIcon className="nav-icon" />
         <span className="nav-label">Live Chart</span>
       </button>
 
@@ -38,7 +39,7 @@ export function MobileBottomNav({
         className={`bottom-nav-item ${activePage === 'analytics' ? 'active' : ''}`}
         onClick={() => onSelectPage('analytics')}
       >
-        <ChartLineUpIcon className="nav-icon" />
+        <LineChartIcon className="nav-icon" />
         <span className="nav-label">Analytics</span>
       </button>
 
