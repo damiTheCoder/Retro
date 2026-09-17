@@ -440,6 +440,8 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const itemEl = target.closest('.klinecharts-pro-drawing-bar .item') as HTMLElement | null
       const listLiEl = target.closest('.klinecharts-pro-drawing-bar .item .list li') as HTMLElement | null
 
+      lastToolTapTime = Date.now()
+
       if (listLiEl) {
         listLiEl.click()
         requestAnimationFrame(handleUpdateDropdownPositions)
@@ -448,6 +450,22 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
       if (itemEl) {
         itemEl.focus()
+
+        const iconOverlay = itemEl.querySelector('.icon-overlay') || itemEl.querySelector('span:first-child')
+        const isAlreadySelected = itemEl.classList.contains('selected') || (iconOverlay && iconOverlay.classList.contains('selected'))
+
+        if (!isAlreadySelected) {
+          const arrow = itemEl.querySelector('.icon-arrow') as HTMLElement
+          if (arrow) {
+            // Need a slight delay on mobile so the library processes the selection first
+            setTimeout(() => {
+              arrow.dispatchEvent(new MouseEvent('click', { 
+                bubbles: true, cancelable: true, view: window 
+              }))
+            }, 10)
+          }
+        }
+
         requestAnimationFrame(handleUpdateDropdownPositions)
         setTimeout(handleUpdateDropdownPositions, 50)
         setTimeout(handleUpdateDropdownPositions, 150)
