@@ -466,7 +466,7 @@
   padding: 6px 14px !important;
   background: rgba(241, 245, 249, 0.96) !important;
   color: #0f172a !important;
-  border: none !important;
+  border: 1px solid #000000 !important;
   border-radius: 12px !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
   backdrop-filter: blur(16px) !important;
@@ -615,12 +615,13 @@
     padding: 6px 8px !important;
     gap: 4px !important;
     flex-wrap: nowrap !important;
-    overflow: visible !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .klinecharts-pro-replay-bar .replay-progress input[type=range] {
-    width: 100px !important;
-    height: 8px !important;
+    width: 90px !important;
+    height: 28px !important;
     touch-action: pan-x !important;
   }
 }
