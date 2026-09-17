@@ -528,7 +528,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement
-      const bar = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') as HTMLElement
+      const bar = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar, .klinecharts-pro-overlay-property-bar') as HTMLElement
       if (!bar) return
 
       const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
