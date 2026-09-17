@@ -2,7 +2,7 @@ import type { NavPage } from './Sidebar'
 import {
   CandlestickChartIcon,
   BookOpenIcon,
-  LineChartIcon,
+  ChartLineUpIcon,
   MessageSquareIcon,
 } from './ShadcnIcons'
 import './MobileBottomNav.css'
@@ -38,7 +38,7 @@ export function MobileBottomNav({
         className={`bottom-nav-item ${activePage === 'analytics' ? 'active' : ''}`}
         onClick={() => onSelectPage('analytics')}
       >
-        <LineChartIcon className="nav-icon" />
+        <ChartLineUpIcon className="nav-icon" />
         <span className="nav-label">Analytics</span>
       </button>
 
