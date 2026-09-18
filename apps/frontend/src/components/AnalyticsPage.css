@@ -93,7 +93,7 @@
   width: 280px;
   max-width: calc(100vw - 32px);
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #ffffff;
   border-radius: 14px;
   padding: 14px;
   box-shadow: 0 14px 40px rgba(15, 23, 42, 0.18);
@@ -146,7 +146,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  background: #f8fafc;
+  background: #ffffff;
   padding: 8px;
   border-radius: 10px;
 }
@@ -164,7 +164,7 @@
 }
 
 .popover-pills-row.horizontal-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #ffffff;
   border-radius: 2px;
 }
 
@@ -192,7 +192,7 @@
 }
 
 .months-popover-reveal {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid #ffffff;
   padding-top: 12px;
 }
 
@@ -204,7 +204,7 @@
 }
 
 .kpi-card {
-  background: #f8fafc;
+  background: #e8e8e8;
   border: none;
   border-radius: 14px;
   padding: 18px;
@@ -220,7 +220,7 @@
 }
 
 .kpi-card.highlight {
-  background: #f8fafc;
+  background: #e8e8e8;
   border: none;
 }
 
@@ -313,7 +313,7 @@
 .winrate-bar-track {
   width: 100%;
   height: 6px;
-  background: #e2e8f0;
+  background: #ffffff;
   border-radius: 3px;
   overflow: hidden;
   margin-top: 4px;
@@ -333,7 +333,7 @@
 }
 
 .chart-card {
-  background: #f8fafc;
+  background: #e8e8e8;
   border: none;
   border-radius: 14px;
   padding: 20px;
@@ -427,11 +427,11 @@
 .grid-line {
   width: 100%;
   height: 1px;
-  background: #e2e8f0;
+  background: #ffffff;
 }
 
 .grid-line.zero-line {
-  background: #cbd5e1;
+  background: #ffffff;
 }
 
 .shadcn-bars-flex {
@@ -487,7 +487,7 @@
 }
 
 .shadcn-bar-column:hover .white-bordered-bar {
-  background-color: #f1f5f9 !important;
+  background-color: #ffffff !important;
   transform: scaleY(1.03);
 }
 
@@ -545,7 +545,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: #ffffff;
+  background: #e8e8e8;
   padding: 12px;
   border-radius: 10px;
   border: none;
@@ -571,7 +571,7 @@
 
 .hbar-track {
   height: 10px;
-  background: #f1f5f9;
+  background: #ffffff;
   border-radius: 5px;
   overflow: hidden;
 }
@@ -601,7 +601,7 @@
 
 /* Table Card (Edge-to-Edge Separating Lines) */
 .table-card {
-  background: #f8fafc;
+  background: #e8e8e8;
   border: none;
   border-radius: 14px;
   padding: 20px 0px;
@@ -633,7 +633,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #ffffff;
 }
 
 .trades-table th:first-child,
@@ -648,7 +648,7 @@
 
 .trades-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #ffffff;
   color: #334155;
 }
 
@@ -667,7 +667,7 @@
 }
 
 .table-tag {
-  background: #e2e8f0;
+  background: #e8e8e8;
   padding: 3px 8px;
   border-radius: 6px;
   font-size: 11px;

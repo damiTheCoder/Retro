@@ -50,7 +50,7 @@
   touch-action: pan-x !important;
   background-color: var(--klinecharts-pro-background-color, #ffffff) !important;
   border: none !important;
-  border-top: 1px solid #e2e8f0 !important;
+  border-top: 1px solid #ffffff !important;
   flex-shrink: 0 !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
@@ -125,8 +125,8 @@
   z-index: 99999999 !important;
   pointer-events: auto !important;
   touch-action: pan-y !important;
-  background: #f3f4f6 !important;
-  background-color: #f3f4f6 !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   border: none !important;
   border-radius: 6px !important;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25) !important;
@@ -154,7 +154,7 @@
 
 .klinecharts-pro-drawing-bar .item .list li:hover,
 .klinecharts-pro-drawing-bar .item .list li:active {
-  background-color: #e5e7eb !important;
+  background-color: #ffffff !important;
   color: #000000 !important;
 }
 
@@ -205,7 +205,7 @@
   gap: 4px !important;
   padding: 6px 10px !important;
   background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1px solid #ffffff !important;
   border-radius: 8px !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
 }
@@ -225,7 +225,7 @@
 
 .klinecharts-pro-overlay-property-bar-item:hover,
 .klinecharts-pro-overlay-property-bar-item:active {
-  background-color: #f1f5f9 !important;
+  background-color: #ffffff !important;
 }
 
 .klinecharts-pro-overlay-property-bar-item.danger,
@@ -496,7 +496,7 @@
   align-items: center;
   gap: 10px;
   padding: 6px 14px;
-  background-color: #f8fafc;
+  background-color: #ffffff;
   border-bottom: none !important;
   border: none !important;
   font-size: 12px;
@@ -676,7 +676,7 @@
 .klinecharts-pro-replay-bar .replay-progress input[type=range]::-webkit-slider-runnable-track,
 .replay-top-bar .replay-progress input[type=range]::-webkit-slider-runnable-track {
   height: 8px !important;
-  background: #e2e8f0 !important;
+  background: #ffffff !important;
   border-radius: 4px !important;
   border: none !important;
 }
@@ -700,7 +700,7 @@
 .klinecharts-pro-replay-bar .replay-progress input[type=range]::-moz-range-track,
 .replay-top-bar .replay-progress input[type=range]::-moz-range-track {
   height: 8px !important;
-  background: #e2e8f0 !important;
+  background: #ffffff !important;
   border-radius: 4px !important;
   border: none !important;
 }
@@ -809,7 +809,7 @@
 
 .replay-action-btn.secondary {
   background: #334155;
-  color: #cbd5e1;
+  color: #ffffff;
 }
 
 .replay-action-btn.secondary:hover {
@@ -944,7 +944,7 @@
   right: 20px;
   width: 320px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #ffffff;
   border-radius: 16px;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
   z-index: 999999;
@@ -1022,7 +1022,7 @@
 .direction-toggle-row {
   display: flex;
   gap: 8px;
-  background: #f1f5f9;
+  background: #ffffff;
   padding: 4px;
   border-radius: 10px;
 }
@@ -1078,7 +1078,7 @@
 
 .input-field input {
   padding: 7px 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #ffffff;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -1096,10 +1096,10 @@
   display: flex;
   justify-content: space-between;
   gap: 6px;
-  background: #f8fafc;
+  background: #ffffff;
   padding: 10px;
   border-radius: 10px;
-  border: 1px solid #f1f5f9;
+  border: 1px solid #ffffff;
 }
 
 .metric-box {

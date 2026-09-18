@@ -4,7 +4,7 @@ import {
   BookOpenIcon,
   LineChartIcon,
   ChartLineUpIcon,
-  MessageSquareIcon,
+  AnthropicIcon,
 } from './ShadcnIcons'
 import './MobileBottomNav.css'
 
@@ -47,7 +47,7 @@ export function MobileBottomNav({
         className={`bottom-nav-item ${activePage === 'aichat' ? 'active' : ''}`}
         onClick={() => onSelectPage('aichat')}
       >
-        <MessageSquareIcon className="nav-icon" />
+        <AnthropicIcon className="nav-icon" />
         <span className="nav-label">AI Chat</span>
       </button>
     </nav>

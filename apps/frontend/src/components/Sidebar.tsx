@@ -8,6 +8,7 @@ import {
   subscribeChat,
   type ChatThread,
 } from '../utils/chatStore'
+import { ChartLineUpIcon, BookOpenIcon, LineChartIcon, AnthropicIcon } from './ShadcnIcons'
 import './Sidebar.css'
 
 export type NavPage = 'chart' | 'journal' | 'analytics' | 'aichat'
@@ -70,6 +71,7 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
                 onClick={() => onSelectPage('chart')}
                 title="Live Chart"
               >
+                <span className="menu-icon"><ChartLineUpIcon width="18" height="18" /></span>
                 <span className="menu-text">Live Chart</span>
               </button>
             </div>
@@ -86,6 +88,7 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
                 onClick={() => onSelectPage('journal')}
                 title="Journal & Strategy"
               >
+                <span className="menu-icon"><BookOpenIcon width="18" height="18" /></span>
                 <span className="menu-text">Journal & Strategy</span>
               </button>
             </div>
@@ -96,6 +99,7 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
                 onClick={() => onSelectPage('analytics')}
                 title="Analytics & PnL"
               >
+                <span className="menu-icon"><LineChartIcon width="18" height="18" /></span>
                 <span className="menu-text">Analytics & PnL</span>
               </button>
             </div>
@@ -122,13 +126,14 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
                 onClick={() => onSelectPage('aichat')}
                 title="AI Trading Assistant"
               >
+                <span className="menu-icon"><AnthropicIcon width="18" height="18" /></span>
                 <span className="menu-text">AI Trading Assistant</span>
               </button>
             </div>
           </div>
 
           {/* Chat History List */}
-          <div className="chat-history-section">
+          <div className="chat-history-section" style={{ display: 'none' }}>
             <div className="history-section-title">Recent Chat History</div>
             <div className="history-list">
               {threads.length === 0 ? (
@@ -164,10 +169,6 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
         <div className="user-profile-card">
           <div className="user-avatar">
             <span>PT</span>
-          </div>
-          <div className="user-info">
-            <span className="user-name">Pro Trader</span>
-            <span className="user-status">Multi-Asset Active</span>
           </div>
         </div>
       </div>

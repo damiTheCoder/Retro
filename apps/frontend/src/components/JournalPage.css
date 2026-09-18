@@ -1,7 +1,7 @@
 .journal-page {
   flex: 1;
   padding: 28px;
-  background-color: #ffffff; /* Page base */
+  background-color: #ffffff;
   color: #0f172a;
   overflow-y: auto;
   display: flex;
@@ -55,7 +55,7 @@
 
 /* Interactive Trade Calendar Component (Light Grey BG, No Borders, No Shadows) */
 .journal-calendar-card {
-  background: #f8fafc;
+  background: #e8e8e8;
   border: none;
   border-radius: 18px;
   padding: 20px 24px;
@@ -135,7 +135,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: #edf2f7;
+  background: #ffffff;
   border: none;
   border-radius: 8px;
   color: #334155;
@@ -144,7 +144,7 @@
 }
 
 .calendar-nav-btn:hover {
-  background: #e2e8f0;
+  background: #ffffff;
   color: #0f172a;
 }
 
@@ -159,7 +159,7 @@
 .calendar-year-pills {
   display: flex;
   gap: 4px;
-  background: #edf2f7;
+  background: #ffffff;
   padding: 3px;
   border-radius: 8px;
   border: none;
@@ -188,7 +188,7 @@
 
 .calendar-all-dates-btn {
   padding: 6px 14px;
-  background: #edf2f7;
+  background: #ffffff;
   border: none;
   border-radius: 8px;
   font-size: 12px;
@@ -229,7 +229,7 @@
 
 .calendar-day-cell {
   min-height: 52px;
-  background: #edf2f7;
+  background: #ffffff;
   border: none;
   border-radius: 10px;
   display: flex;
@@ -244,17 +244,17 @@
 }
 
 .calendar-day-cell:hover {
-  background: #e2e8f0;
+  background: #ffffff;
   transform: translateY(-1px);
 }
 
 .calendar-day-cell.other-month {
   opacity: 0.4;
-  background: #f1f5f9;
+  background: #ffffff;
 }
 
 .calendar-day-cell.has-trades {
-  background: #e2e8f0;
+  background: #ffffff;
   border: none;
   box-shadow: none;
 }
@@ -338,7 +338,7 @@
 .search-box input {
   width: 100%;
   padding: 10px 14px 10px 40px;
-  background: #f1f5f9;
+  background: #e8e8e8;
   border: none;
   border-radius: 10px;
   color: #0f172a;
@@ -348,7 +348,7 @@
 }
 
 .search-box input:focus {
-  background-color: #e2e8f0;
+  background-color: #e8e8e8;
 }
 
 .filter-group {
@@ -367,7 +367,7 @@
 .filter-pill,
 .outcome-pill {
   padding: 7px 14px;
-  background: #f1f5f9;
+  background: #ffffff;
   border: none;
   border-radius: 20px;
   color: #475569;
@@ -379,7 +379,7 @@
 
 .filter-pill:hover,
 .outcome-pill:hover {
-  background: #e2e8f0;
+  background: #ffffff;
   color: #0f172a;
 }
 
@@ -397,7 +397,7 @@
 
 /* Main Trade Journal Card Container (Light Grey BG, Edge-to-Edge Table Separators) */
 .journal-card-container {
-  background: #f8fafc;
+  background: #e8e8e8;
   border: none;
   border-radius: 18px;
   padding: 24px 0px;
@@ -459,14 +459,14 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #f8fafc;
+  background: #ffffff;
   color: #64748b;
   padding: 8px 14px;
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #ffffff;
   white-space: nowrap;
 }
 
@@ -481,19 +481,19 @@
 }
 
 .journal-table-row {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #ffffff;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
 .journal-table-row:hover {
-  background-color: #edf2f7;
+  background-color: #ffffff;
 }
 
 .journal-data-table td {
   padding: 8px 14px;
   vertical-align: middle;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #ffffff;
   white-space: nowrap;
 }
 
@@ -514,7 +514,7 @@
 .asset-pill-badge {
   display: inline-block;
   white-space: nowrap;
-  background: #e2e8f0;
+  background: #ffffff;
   color: #475569;
   padding: 4px 12px;
   border-radius: 12px;
@@ -694,7 +694,7 @@
 }
 
 .btn-close-modal {
-  background: #f1f5f9;
+  background: #ffffff;
   border: none;
   width: 32px;
   height: 32px;
@@ -709,7 +709,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  background: #f8fafc;
+  background: #ffffff;
   padding: 14px;
   border-radius: 12px;
 }
@@ -750,7 +750,7 @@
 
 .notes-text {
   margin: 0;
-  background: #f8fafc;
+  background: #ffffff;
   padding: 12px;
   border-radius: 8px;
   border-left: 3px solid #2563eb;
@@ -807,7 +807,7 @@
 .form-group select,
 .form-group textarea {
   padding: 10px 12px;
-  background: #f1f5f9;
+  background: #ffffff;
   border: none;
   border-radius: 8px;
   color: #0f172a;
@@ -830,7 +830,7 @@
 
 .btn-cancel {
   padding: 10px 16px;
-  background: #f1f5f9;
+  background: #ffffff;
   border: none;
   border-radius: 8px;
   color: #64748b;

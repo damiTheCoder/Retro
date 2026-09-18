@@ -20,10 +20,12 @@ export default async function handler(req: any, res: any) {
   try {
     const { text, message, messages, active_page = 'aichat' } = req.body || {}
     const userText = text || message || ''
-    const apiKey =
-      process.env.OPENROUTER_API_KEY ||
-      process.env.VITE_OPENROUTER_API_KEY ||
-      ''
+    const apiKey = process.env.openrouter || ''
+
+    if (!apiKey) {
+      res.status(500).json({ error: 'Missing OpenRouter API key on server' })
+      return
+    }
 
     const promptMessages =
       Array.isArray(messages) && messages.length > 0

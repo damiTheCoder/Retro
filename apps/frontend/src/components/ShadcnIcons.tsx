@@ -666,13 +666,13 @@ export function SendIcon(props: SVGProps<SVGSVGElement>) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="3.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       {...props}
     >
-      <line x1="22" y1="2" x2="11" y2="13" />
-      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
     </svg>
   )
 }
@@ -716,6 +716,26 @@ export function BotIcon(props: SVGProps<SVGSVGElement>) {
       <path d="M20 14h2" />
       <path d="M15 13v2" />
       <path d="M9 13v2" />
+    </svg>
+  )
+}
+
+export function AnthropicIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M12 2L2 19h20L12 2z" fill="currentColor" stroke="none" />
+      <path d="M12 8l-4 9h8l-4-9z" fill="#ffffff" stroke="none" />
     </svg>
   )
 }

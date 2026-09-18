@@ -6,7 +6,7 @@
   --sidebar-fg: #0f172a;
   --sidebar-muted: #64748b;
   --sidebar-accent: #f1f5f9;
-  --sidebar-accent-hover: #e2e8f0;
+  --sidebar-accent-hover: #e8e8e8;
   --sidebar-primary: #2563eb;
   --sidebar-primary-fg: #ffffff;
   --sidebar-border: transparent;
@@ -28,7 +28,7 @@
 .shadcn-sidebar {
   width: var(--sidebar-width);
   height: 100%;
-  background: #f8fafc;
+  background: #ffffff;
   color: var(--sidebar-fg);
   display: flex;
   flex-direction: column;
@@ -211,14 +211,14 @@
 }
 
 .sidebar-menu-button:hover {
-  background: #f1f5f9;
+  background: #e8e8e8;
   color: #000000;
 }
 
 .sidebar-menu-button.active,
 .sidebar-menu-button.active .menu-text {
-  background: #000000 !important;
-  color: #ffffff !important;
+  background: #e8e8e8 !important;
+  color: #000000 !important;
   border: none;
   font-weight: 400;
 }
@@ -250,7 +250,7 @@
   display: flex;
   align-items: center;
   gap: 3px;
-  background: #f1f5f9;
+  background: #e8e8e8;
   border: none;
   border-radius: 4px;
   color: #0f172a;
@@ -298,7 +298,7 @@
 
 .empty-history-text {
   font-size: 12.5px;
-  color: #cbd5e1;
+  color: #e8e8e8;
   padding: 6px 8px;
   font-style: italic;
 }
@@ -317,12 +317,12 @@
 }
 
 .history-item:hover {
-  background: #f1f5f9;
+  background: #e8e8e8;
   color: #000000 !important;
 }
 
 .history-item.active {
-  background: #f1f5f9;
+  background: #e8e8e8;
   color: #000000 !important;
   font-weight: 600;
 }
@@ -369,7 +369,7 @@
 .menu-count {
   font-size: 11px;
   font-weight: 400;
-  background: #e2e8f0;
+  background: #e8e8e8;
   color: #475569;
   padding: 1px 6px;
   border-radius: 10px;
@@ -384,7 +384,7 @@
 .user-profile-card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   padding: 6px;
   border-radius: 8px;
   cursor: pointer;
@@ -392,13 +392,13 @@
 }
 
 .user-profile-card:hover {
-  background: #f1f5f9;
+  background: #e8e8e8;
 }
 
 .user-avatar {
   width: 34px;
   height: 34px;
-  background: #f1f5f9;
+  background: #e8e8e8;
   border: none;
   border-radius: 50%;
   display: flex;

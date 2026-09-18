@@ -24,10 +24,10 @@ import { generateClientAiResponse } from '../utils/aiService'
 import './AIChatPage.css'
 
 const PAGE_CONTEXT_OPTIONS = [
-  { id: 'chart', title: 'Chart Co-Pilot', icon: LineChartIcon, placeholder: 'Ask AI about active chart setups, technical levels & stop loss...' },
-  { id: 'journal', title: 'Journal Auditor', icon: BookOpenIcon, placeholder: 'Ask AI to audit your logged trade entries and execution errors...' },
-  { id: 'analytics', title: 'Analytics Evaluator', icon: BarChart3Icon, placeholder: 'Ask AI to analyze your Win Rate, Profit Factor & Expectancy...' },
-  { id: 'aichat', title: 'General AI Agent', icon: BotIcon, placeholder: 'Ask Chart Rabbit AI anything about trading strategies & risk...' },
+  { id: 'chart', title: 'Chart Co-Pilot', icon: LineChartIcon, placeholder: 'Ask about chart setups, technical levels & stop loss...' },
+  { id: 'journal', title: 'Journal Auditor', icon: BookOpenIcon, placeholder: 'Ask to audit your logged trades and execution errors...' },
+  { id: 'analytics', title: 'Analytics Evaluator', icon: BarChart3Icon, placeholder: 'Ask to analyze your Win Rate, Profit Factor & Expectancy...' },
+  { id: 'aichat', title: 'General AI Agent', icon: BotIcon, placeholder: 'Ask Chart Rabbit AI anything about trading strategies...' },
 ]
 
 const CONTEXT_QUICK_PROMPTS: Record<string, Array<{ title: string; prompt: string }>> = {
@@ -410,13 +410,13 @@ export function AIChatPage() {
             </div>
 
             <div className="right-actions">
-              <span className="input-hint">Shift + Enter for new line</span>
               <button
                 className={`send-msg-btn ${inputText.trim() ? 'active' : ''}`}
                 onClick={() => handleSendMessage()}
                 disabled={!inputText.trim() || isThinking}
+                title="Send message"
               >
-                <SendIcon /> <span>Send</span>
+                <SendIcon />
               </button>
             </div>
           </div>
