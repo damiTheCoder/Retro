@@ -30,7 +30,7 @@
   gap: 12px;
 }
 
-.header-sidebar-toggle-btn {
+.app-header-sidebar-toggle-btn {
   background: transparent;
   border: none;
   cursor: pointer;
@@ -46,16 +46,16 @@
   flex-shrink: 0;
 }
 
-.header-sidebar-toggle-btn:hover {
+.app-header-sidebar-toggle-btn:hover {
   background-color: #f1f5f9;
   color: #0f172a;
 }
 
-.header-sidebar-toggle-btn:active {
+.app-header-sidebar-toggle-btn:active {
   transform: scale(0.95);
 }
 
-.header-sidebar-toggle-btn svg {
+.app-header-sidebar-toggle-btn svg {
   width: 20px;
   height: 20px;
   display: block;
@@ -384,7 +384,7 @@
     background: #ffffff;
   }
 
-  .header-sidebar-toggle-btn,
+  .app-header-sidebar-toggle-btn,
   .header-divider {
     display: none !important;
   }

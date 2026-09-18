@@ -239,11 +239,10 @@
   background-color: rgba(239, 68, 68, 0.15) !important;
 }
 
-/* Hide library-rendered sidebar toggle icon */
-.klinecharts-pro-period-bar .menu-container,
-.klinecharts-pro-header-sidebar-toggle-btn,
-.header-sidebar-toggle-btn,
-[class*="sidebar-toggle"] {
+/* Hide library-rendered sidebar toggle icon inside trading chest chart widget only */
+.trading-chest-container .klinecharts-pro-period-bar .menu-container,
+.trading-chest-container .klinecharts-pro-header-sidebar-toggle-btn,
+.trading-chest-container [class*="sidebar-toggle"] {
   display: none !important;
   visibility: hidden !important;
   width: 0 !important;

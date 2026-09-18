@@ -70,7 +70,7 @@ function App() {
             <div className="top-header-left">
               {/* Sidebar toggle button - desktop only */}
               <button 
-                className="header-sidebar-toggle-btn" 
+                className="app-header-sidebar-toggle-btn" 
                 onClick={toggleSidebar} 
                 title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
