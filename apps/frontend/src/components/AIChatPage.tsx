@@ -20,6 +20,7 @@ import {
 } from '../utils/chatStore'
 import { getJournalEntries, addJournalEntry } from '../utils/tradeJournalStore'
 import { sendChatMessageApi, createJournalEntryApi } from '../api/client'
+import { generateClientAiResponse } from '../utils/aiService'
 import './AIChatPage.css'
 
 const PAGE_CONTEXT_OPTIONS = [
@@ -185,13 +186,35 @@ export function AIChatPage() {
     }
 
     try {
-      // 1. Send request to FastAPI backend (connected to OpenRouter AI agent)
-      const res = await sendChatMessageApi(currentThread.id, text, activePageContext)
-      if (res && (res as any).text) {
-        const cleanReply = (res as any).text.replace(/\*\*/g, '')
-        addMessageToThread(currentThread.id, 'ai', actionExecutionPrefix + cleanReply)
+      let reply: string | null = null
+
+      // 1. Try FastAPI backend first (if running locally or connected to backend URL)
+      try {
+        const res = await sendChatMessageApi(currentThread.id, text, activePageContext)
+        if (res && (res as any).text) {
+          reply = (res as any).text.replace(/\*\*/g, '')
+        }
+      } catch (backendErr) {
+        console.warn('Backend chat API failed, falling back to direct OpenRouter client:', backendErr)
+      }
+
+      // 2. If backend is unavailable (e.g. on Vercel), invoke direct OpenRouter client
+      if (!reply) {
+        try {
+          const history = (currentThread.messages || []).map((m) => ({
+            role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
+            content: m.text,
+          }))
+          reply = await generateClientAiResponse(history, activePageContext)
+        } catch (clientAiErr) {
+          console.warn('Direct OpenRouter call failed, using local assistant:', clientAiErr)
+        }
+      }
+
+      if (reply) {
+        addMessageToThread(currentThread.id, 'ai', actionExecutionPrefix + reply)
       } else {
-        // Fallback local AI execution if backend server is unreachable
+        // Fallback local heuristic execution
         addFallbackAiResponse(text, currentThread.id, actionExecutionPrefix)
       }
     } catch (err) {

@@ -1,6 +1,6 @@
 import type { Period } from 'trading-chest'
 import type { ResolvedSymbol } from './symbolResolver'
-import { loadCandles } from './candleDB'
+import { loadCandles, saveCandles } from './candleDB'
 
 export interface FetchKLineResult {
   candles: any[]
@@ -56,7 +56,10 @@ function periodToBiquoteInterval(period: Period): string {
   return '1d'
 }
 
-
+function pseudoRandom(seed: number): number {
+  const x = Math.sin(seed++) * 10000
+  return x - Math.floor(x)
+}
 
 export function generateDeterministicCandles(ticker: string, count = 300, basePrice = 100): any[] {
   const list = []
@@ -96,26 +99,235 @@ export function generateDeterministicCandles(ticker: string, count = 300, basePr
   return list
 }
 
+async function fetchWithTimeout(url: string, timeoutMs = 6000): Promise<any> {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(id)
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    clearTimeout(id)
+    return null
+  }
+}
+
 export async function fetchMultiAssetHistory(resolved: ResolvedSymbol, period: Period): Promise<FetchKLineResult> {
   const { assetClass, normalizedSymbol } = resolved
-  const interval = periodToBinanceInterval(period) // using binance intervals as standard keys
-  
+  const interval = periodToBinanceInterval(period)
   const ticker = normalizedSymbol
 
-  const dbData = await loadCandles(ticker, interval)
-  if (dbData && dbData.candles.length > 0) {
+  // Step 1: Check IndexedDB cache first
+  try {
+    const dbData = await loadCandles(ticker, interval)
+    if (dbData && dbData.candles && dbData.candles.length >= 200) {
+      return {
+        candles: dbData.candles,
+        isDemoData: false,
+        isStockError: false,
+      }
+    }
+  } catch (err) {
+    console.warn('IndexedDB read error:', err)
+  }
+
+  // Step 2: Live Fetchers based on Asset Class
+  // 1. Crypto Fetcher (Binance -> Bybit -> CryptoCompare)
+  if (assetClass === 'crypto') {
+    try {
+      let raw = await fetchWithTimeout(
+        `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(ticker)}&interval=${interval}&limit=1000`
+      )
+      if (!Array.isArray(raw)) {
+        raw = await fetchWithTimeout(
+          `https://api.binance.us/api/v3/klines?symbol=${encodeURIComponent(ticker)}&interval=${interval}&limit=1000`
+        )
+      }
+      if (Array.isArray(raw) && raw.length > 0) {
+        const candles = raw.map((d: any) => ({
+          timestamp: Number(d[0]),
+          open: parseFloat(d[1]),
+          high: parseFloat(d[2]),
+          low: parseFloat(d[3]),
+          close: parseFloat(d[4]),
+          volume: parseFloat(d[5]),
+        }))
+        saveCandles(ticker, interval, candles, true).catch(() => {})
+        return {
+          candles,
+          isDemoData: false,
+          isStockError: false,
+        }
+      }
+    } catch (e) {
+      console.warn('Binance fetch failed, trying Bybit...', e)
+    }
+
+    // Fallback 1: Bybit
+    try {
+      const json = await fetchWithTimeout(
+        `https://api.bybit.com/v5/market/kline?category=spot&symbol=${encodeURIComponent(ticker)}&interval=60&limit=1000`
+      )
+      const list = json?.result?.list
+      if (Array.isArray(list) && list.length > 0) {
+        const candles = list.slice().reverse().map((d: any) => ({
+          timestamp: Number(d[0]),
+          open: parseFloat(d[1]),
+          high: parseFloat(d[2]),
+          low: parseFloat(d[3]),
+          close: parseFloat(d[4]),
+          volume: parseFloat(d[5]),
+        }))
+        saveCandles(ticker, interval, candles, true).catch(() => {})
+        return {
+          candles,
+          isDemoData: false,
+          isStockError: false,
+        }
+      }
+    } catch (e) {
+      console.warn('Bybit fetch failed, trying CryptoCompare...', e)
+    }
+
+    // Fallback 2: CryptoCompare
+    try {
+      const baseAsset = resolved.shortName.toUpperCase()
+      const json = await fetchWithTimeout(
+        `https://min-api.cryptocompare.com/data/v2/histohour?fsym=${baseAsset}&tsym=USD&limit=300`
+      )
+      const raw = json?.Data?.Data
+      if (Array.isArray(raw) && raw.length > 0) {
+        const candles = raw.map((d: any) => ({
+          timestamp: Number(d.time) * 1000,
+          open: parseFloat(d.open),
+          high: parseFloat(d.high),
+          low: parseFloat(d.low),
+          close: parseFloat(d.close),
+          volume: parseFloat(d.volumeto || d.volumefrom || 0),
+        }))
+        saveCandles(ticker, interval, candles, true).catch(() => {})
+        return {
+          candles,
+          isDemoData: false,
+          isStockError: false,
+        }
+      }
+    } catch (e) {
+      console.warn('CryptoCompare fallback failed...', e)
+    }
+
+    // High-fidelity fallback if offline
+    const basePrice = ticker.includes('ETH') ? 2650 : ticker.includes('SOL') ? 195 : ticker.includes('XRP') ? 2.4 : ticker.includes('BNB') ? 620 : 84200
+    const fallbackCandles = generateDeterministicCandles(ticker, 300, basePrice)
+    saveCandles(ticker, interval, fallbackCandles, false).catch(() => {})
     return {
-      candles: dbData.candles,
-      isDemoData: false,
+      candles: fallbackCandles,
+      isDemoData: true,
       isStockError: false,
     }
   }
 
-  // If not cached, return empty with error instructing to download
+  // 2. Forex, Commodity & Index Fetcher (Biquote / Fallback)
+  if (assetClass === 'forex' || assetClass === 'commodity' || assetClass === 'index') {
+    const bqSymbol = resolved.normalizedSymbol
+    const bqInterval = periodToBiquoteInterval(period)
+
+    try {
+      const json = await fetchWithTimeout(
+        `https://api.biquote.com/v1/ohlc?symbol=${encodeURIComponent(bqSymbol)}&interval=${bqInterval}&limit=500`
+      )
+      const rawBars = Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : null
+
+      if (Array.isArray(rawBars) && rawBars.length > 0) {
+        const candles = rawBars.map((b: any) => {
+          const openPrice = parseFloat(b.open ?? b.o ?? b.mid ?? b.close ?? b.c ?? 1)
+          const highPrice = parseFloat(b.high ?? b.h ?? b.mid ?? b.close ?? b.c ?? openPrice)
+          const lowPrice = parseFloat(b.low ?? b.l ?? b.mid ?? b.close ?? b.c ?? openPrice)
+          const closePrice = parseFloat(b.mid ?? b.close ?? b.c ?? b.last ?? openPrice)
+          const time = Number(b.timestamp || b.time || b.t || Date.now())
+
+          return {
+            timestamp: time > 10000000000 ? time : time * 1000,
+            open: openPrice,
+            high: highPrice,
+            low: lowPrice,
+            close: closePrice,
+            volume: parseFloat(b.volume || b.v || 0),
+          }
+        })
+        saveCandles(ticker, interval, candles, true).catch(() => {})
+        return {
+          candles,
+          isDemoData: false,
+          isStockError: false,
+        }
+      }
+    } catch (e) {
+      console.warn('Biquote fetch error:', e)
+    }
+
+    // Deterministic fallback for Forex / Commodities
+    const basePrice = assetClass === 'commodity' ? 2680 : assetClass === 'index' ? 5600 : 1.085
+    const fallbackCandles = generateDeterministicCandles(normalizedSymbol, 300, basePrice)
+    saveCandles(ticker, interval, fallbackCandles, false).catch(() => {})
+    return {
+      candles: fallbackCandles,
+      isDemoData: true,
+      isStockError: false,
+    }
+  }
+
+  // 3. Stock Fetcher (FMP / Deterministic)
+  if (assetClass === 'stock') {
+    const symbol = normalizedSymbol.toUpperCase()
+    const apiKey = import.meta.env?.VITE_STOCK_API_KEY || ''
+
+    if (apiKey) {
+      try {
+        const json = await fetchWithTimeout(
+          `https://financialmodelingprep.com/api/v3/historical-price-full/${encodeURIComponent(symbol)}?apikey=${apiKey}`,
+          3000
+        )
+        const historical = json?.historical
+        if (Array.isArray(historical) && historical.length > 0) {
+          const candles = historical
+            .slice()
+            .reverse()
+            .map((d: any) => ({
+              timestamp: new Date(d.date).getTime(),
+              open: parseFloat(d.open),
+              high: parseFloat(d.high),
+              low: parseFloat(d.low),
+              close: parseFloat(d.close),
+              volume: parseFloat(d.volume || 0),
+            }))
+          saveCandles(ticker, interval, candles, true).catch(() => {})
+          return {
+            candles,
+            isDemoData: false,
+            isStockError: false,
+          }
+        }
+      } catch (e) {
+        console.warn('Stock API fetch failed:', e)
+      }
+    }
+
+    const stockBasePrice = symbol === 'AAPL' ? 225 : symbol === 'NVDA' ? 120 : symbol === 'TSLA' ? 240 : 450
+    const fallbackCandles = generateDeterministicCandles(symbol, 300, stockBasePrice)
+    saveCandles(ticker, interval, fallbackCandles, false).catch(() => {})
+    return {
+      candles: fallbackCandles,
+      isDemoData: true,
+      isStockError: false,
+    }
+  }
+
+  const fallbackCandles = generateDeterministicCandles(normalizedSymbol, 300, 100)
   return {
-    candles: [],
-    isDemoData: false,
-    isStockError: true,
-    stockErrorMessage: `Data not cached. Please click "Download 5y" above to fetch historical data for ${ticker} (${interval}).`,
+    candles: fallbackCandles,
+    isDemoData: true,
+    isStockError: false,
   }
 }
