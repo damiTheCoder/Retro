@@ -439,7 +439,7 @@ export function AIChatPage({ onNavigateToPage }: AIChatPageProps) {
         )}
       </div>
 
-      {/* Input Bar */}
+      {/* Polished Chat Input Bar */}
       <div className="chat-input-wrapper">
         <div className="chat-input-container">
           <textarea
@@ -451,16 +451,28 @@ export function AIChatPage({ onNavigateToPage }: AIChatPageProps) {
             onKeyDown={handleKeyDown}
           />
 
-          <div className="chat-input-actions">
-            <button
-              className={`chat-send-btn ${inputText.trim() ? 'active' : ''}`}
-              onClick={() => handleSendMessage()}
-              disabled={!inputText.trim() || isThinking}
-              title="Send message"
-            >
-              <SendIcon width="16" height="16" />
-            </button>
+          <div className="chat-input-bottom-bar">
+            <div className="chat-input-left-meta">
+              <span className="chat-input-mode-badge">
+                <SparklesIcon width="12" height="12" />
+                <span>{activeOption.title}</span>
+              </span>
+            </div>
+
+            <div className="chat-input-right-actions">
+              <button
+                className={`chat-send-btn ${inputText.trim() ? 'active' : ''}`}
+                onClick={() => handleSendMessage()}
+                disabled={!inputText.trim() || isThinking}
+                title="Send message (Enter)"
+              >
+                <SendIcon width="15" height="15" />
+              </button>
+            </div>
           </div>
+        </div>
+        <div className="chat-input-disclaimer">
+          Chart Rabbit AI can operate live charts, draw setups, and auto-log trades. Always verify key levels before trade execution.
         </div>
       </div>
     </div>
