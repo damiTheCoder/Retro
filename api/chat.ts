@@ -20,10 +20,21 @@ export default async function handler(req: any, res: any) {
   try {
     const { text, message, messages, active_page = 'aichat' } = req.body || {}
     const userText = text || message || ''
-    const apiKey = process.env.openrouter || ''
+    
+    // Support all case variations of OpenRouter API key environment variable on Vercel
+    const apiKey =
+      process.env.OPENROUTER_API_KEY ||
+      process.env.openrouter ||
+      process.env.OPENROUTER ||
+      process.env.VITE_OPENROUTER_API_KEY ||
+      process.env.openrouter_api_key ||
+      process.env.OPEN_ROUTER_API_KEY ||
+      process.env.OPENROUTER_KEY ||
+      ''
 
     if (!apiKey) {
-      res.status(500).json({ error: 'Missing OpenRouter API key on server' })
+      console.error('[api/chat] No OpenRouter API key found in process.env. Checked: OPENROUTER_API_KEY, openrouter, OPENROUTER, VITE_OPENROUTER_API_KEY')
+      res.status(500).json({ error: 'Missing OpenRouter API key. Please check your Vercel Environment Variables (e.g. OPENROUTER_API_KEY or openrouter).' })
       return
     }
 
@@ -172,6 +183,8 @@ export default async function handler(req: any, res: any) {
       },
     ]
 
+    let lastError = ''
+
     for (const model of candidateModels) {
       try {
         const openRouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -197,7 +210,17 @@ export default async function handler(req: any, res: any) {
           }),
         })
 
-        if (!openRouterRes.ok) continue
+        if (!openRouterRes.ok) {
+          const errText = await openRouterRes.text()
+          lastError = `[Model ${model} HTTP ${openRouterRes.status}]: ${errText}`
+          console.warn('[api/chat] OpenRouter call failed:', lastError)
+          if (openRouterRes.status === 401) {
+            res.status(401).json({ error: `OpenRouter 401 Unauthorized: Invalid API Key. Please verify your OpenRouter key in Vercel.` })
+            return
+          }
+          continue
+        }
+
         const data = await openRouterRes.json()
         const choice = data?.choices?.[0]
         const message = choice?.message
@@ -274,14 +297,13 @@ export default async function handler(req: any, res: any) {
             return
           }
         }
-      } catch {}
+      } catch (err: any) {
+        lastError = err?.message || String(err)
+      }
     }
 
-    res.status(200).json({
-      id: `msg-${Date.now()}`,
-      sender: 'ai',
-      text: `Chart Rabbit AI Co-Pilot: Active and evaluating setups for ${String(active_page).toUpperCase()}. Maintain strict risk management with a minimum 1:2.0 Risk-to-Reward ratio.`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    res.status(502).json({
+      error: `All OpenRouter models failed. Last error: ${lastError || 'Unknown error'}. Please check your OpenRouter account balance/key.`,
     })
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Internal Server Error' })

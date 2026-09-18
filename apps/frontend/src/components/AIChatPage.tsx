@@ -157,18 +157,20 @@ export function AIChatPage({ onNavigateToPage }: AIChatPageProps) {
 
     try {
       let reply: string | null = null
+      let apiError: string | null = null
 
-      // 1. Try backend chat API first
+      // 1. Try backend chat API first (runs on Vercel serverless with process.env key)
       try {
         const res = await sendChatMessageApi(currentThread.id, text, activePageContext)
         if (res && (res as any).text) {
           reply = (res as any).text
         }
-      } catch (backendErr) {
-        console.warn('Backend chat API failed, falling back to direct OpenRouter client:', backendErr)
+      } catch (backendErr: any) {
+        apiError = backendErr?.message || String(backendErr)
+        console.warn('Backend chat API failed:', apiError)
       }
 
-      // 2. If backend is unavailable (e.g. on Vercel), invoke direct OpenRouter client
+      // 2. If backend is unavailable, invoke direct OpenRouter client call
       if (!reply) {
         try {
           const history = (currentThread.messages || []).map((m) => ({
@@ -176,19 +178,27 @@ export function AIChatPage({ onNavigateToPage }: AIChatPageProps) {
             content: m.text,
           }))
           reply = await generateClientAiResponse(history, activePageContext)
-        } catch (clientAiErr) {
-          console.warn('Direct OpenRouter call failed, using local assistant:', clientAiErr)
+        } catch (clientAiErr: any) {
+          console.warn('Direct OpenRouter call failed:', clientAiErr)
+          if (!apiError) apiError = clientAiErr?.message || String(clientAiErr)
         }
       }
 
       if (reply) {
         addMessageToThread(currentThread.id, 'ai', reply)
       } else {
-        // Fallback local heuristic execution
-        addFallbackAiResponse(text, currentThread.id)
+        addMessageToThread(
+          currentThread.id,
+          'ai',
+          `⚠️ OpenRouter API Notice: Could not connect to OpenRouter with model Nex 2.5 Pro.\n\nError details: ${apiError || 'Missing API Key'}\n\nPlease verify in your Vercel Dashboard that your environment variable is added under OPENROUTER_API_KEY, and trigger a quick Redeploy in Vercel so the environment variable takes effect.`
+        )
       }
-    } catch (err) {
-      addFallbackAiResponse(text, currentThread.id)
+    } catch (err: any) {
+      addMessageToThread(
+        currentThread.id,
+        'ai',
+        `⚠️ Error processing AI request: ${err?.message || String(err)}`
+      )
     } finally {
       setIsThinking(false)
     }

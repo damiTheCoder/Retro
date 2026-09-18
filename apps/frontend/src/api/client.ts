@@ -55,8 +55,20 @@ export async function getAnalyticsSummaryApi() {
 
 // Chat API
 export async function sendChatMessageApi(threadId: string, text: string, activePage: string = 'aichat') {
-  return fetchApi('/chat', {
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || (isLocal ? 'http://localhost:8000/api/v1' : '/api')
+
+  const res = await fetch(`${baseUrl}/chat`, {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ thread_id: threadId, text, active_page: activePage }),
   })
+
+  const json = await res.json()
+  if (!res.ok) {
+    throw new Error(json?.error || `API returned HTTP ${res.status}`)
+  }
+  return json
 }
