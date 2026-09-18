@@ -2,8 +2,12 @@ import { getJournalEntries } from './tradeJournalStore'
 import { dispatchChartAction, type ChartActionPayload } from './chartActionStore'
 import { addJournalEntry } from './tradeJournalStore'
 
+declare const __OPENROUTER_API_KEY__: string | undefined
+
 const OPENROUTER_API_KEY =
-  (import.meta.env?.VITE_OPENROUTER_API_KEY as string) || ''
+  (typeof __OPENROUTER_API_KEY__ !== 'undefined' ? __OPENROUTER_API_KEY__ : '') ||
+  (import.meta.env?.VITE_OPENROUTER_API_KEY as string) ||
+  ''
 
 // Top function-calling capable models on OpenRouter - Nex 2.5 Pro prioritized
 export const CANDIDATE_MODELS = [

@@ -5,7 +5,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   define: {
-    'import.meta.env.VITE_OPENROUTER_API_KEY': JSON.stringify(
+    __OPENROUTER_API_KEY__: JSON.stringify(
       process.env.OPENROUTER_API_KEY ||
       process.env.openrouter ||
       process.env.OPENROUTER ||
