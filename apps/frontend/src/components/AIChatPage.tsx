@@ -21,7 +21,15 @@ import {
 import { getJournalEntries, addJournalEntry } from '../utils/tradeJournalStore'
 import { sendChatMessageApi, createJournalEntryApi } from '../api/client'
 import { generateClientAiResponse } from '../utils/aiService'
+import { parseAiResponseActions } from '../utils/aiActionParser'
+import { AIActionCard } from './AIActionCard'
+import { setPendingChartNavigation, type ChartActionPayload } from '../utils/chartActionStore'
+import type { NavPage } from './Sidebar'
 import './AIChatPage.css'
+
+interface AIChatPageProps {
+  onNavigateToPage?: (page: NavPage, symbol?: string, timeframe?: string) => void
+}
 
 const PAGE_CONTEXT_OPTIONS = [
   { id: 'chart', title: 'Chart Co-Pilot', icon: LineChartIcon, placeholder: 'Ask about chart setups, technical levels & stop loss...' },
@@ -33,20 +41,20 @@ const PAGE_CONTEXT_OPTIONS = [
 const CONTEXT_QUICK_PROMPTS: Record<string, Array<{ title: string; prompt: string }>> = {
   chart: [
     {
-      title: 'Technical Levels Analysis',
-      prompt: 'Analyze current chart pattern, order block sweeps, and key Fair Value Gaps (FVG).',
+      title: 'Plot ICT Order Block & Long Setup',
+      prompt: 'Analyze BTCUSDT 15M, draw the key bullish Order Block zone and plot a Long Position setup with 1:2.5 R:R.',
     },
     {
-      title: 'Risk & Stop-Loss Calculator',
-      prompt: 'Calculate precise stop loss and take profit for a $10,000 account at 1% risk.',
+      title: 'Draw Daily Support & Resistance',
+      prompt: 'Plot key horizontal support and resistance levels on BTCUSDT.',
     },
     {
-      title: 'ICT Market Structure Shift',
-      prompt: 'Confirm if current 15M candle close qualifies as a valid ICT Market Structure Shift (MSS).',
+      title: 'Activate Fibonacci Tool',
+      prompt: 'Select the Fibonacci Retracement drawing tool on the chart.',
     },
     {
-      title: 'Replay Trade Setup',
-      prompt: 'Evaluate optimal entry zone for replay backtest on BTCUSDT.',
+      title: 'ETHUSDT Market Structure Shift',
+      prompt: 'Analyze ETHUSDT for an ICT Market Structure Shift and draw the Fair Value Gap (FVG).',
     },
   ],
   journal: [
@@ -87,8 +95,8 @@ const CONTEXT_QUICK_PROMPTS: Record<string, Array<{ title: string; prompt: strin
   ],
   aichat: [
     {
-      title: 'BTCUSDT Order Block Sweep',
-      prompt: 'Can you analyze the 4H order block sweep and FVG levels for BTCUSDT?',
+      title: 'Plot BTCUSDT ICT Setup',
+      prompt: 'Draw a bullish Order Block and Long Position setup on BTCUSDT.',
     },
     {
       title: 'Auto-Log Trade Action',
@@ -105,7 +113,7 @@ const CONTEXT_QUICK_PROMPTS: Record<string, Array<{ title: string; prompt: strin
   ],
 }
 
-export function AIChatPage() {
+export function AIChatPage({ onNavigateToPage }: AIChatPageProps) {
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [inputText, setInputText] = useState<string>('')
@@ -147,52 +155,14 @@ export function AIChatPage() {
     addMessageToThread(currentThread.id, 'user', text)
     setIsThinking(true)
 
-    // Agentic Action Executor: Detect requests to perform live actions (e.g. logging trades)
-    const lower = text.toLowerCase()
-    let actionExecutionPrefix = ''
-
-    if (lower.includes('log') && (lower.includes('trade') || lower.includes('win') || lower.includes('loss') || lower.includes('pnl'))) {
-      const isWin = lower.includes('win') || (!lower.includes('loss') && !text.includes('-'))
-      const pnlMatch = text.match(/[\+\-]?\$?(\d+(\.\d+)?)/)
-      const parsedPnL = pnlMatch ? parseFloat(pnlMatch[1]) : 250
-      const pnlVal = isWin ? Math.abs(parsedPnL) : -Math.abs(parsedPnL)
-
-      const symbolMatch = text.match(/\b(btc|eth|sol|eurusd|gbpusd|xauusd|aapl|nvda|tsla)\b/i)
-      const baseSymbol = symbolMatch ? symbolMatch[1].toUpperCase() : 'BTCUSDT'
-      const symbol = baseSymbol.includes('USD') ? baseSymbol : `${baseSymbol}USDT`
-
-      const newEntry = addJournalEntry({
-        title: `${symbol} AI Auto-Logged Execution`,
-        assetClass: symbol.includes('USD') && !symbol.includes('USDT') ? 'Forex' : 'Crypto',
-        symbol,
-        direction: lower.includes('short') ? 'SHORT' : 'LONG',
-        entryPrice: 84000,
-        exitPrice: isWin ? 85500 : 83000,
-        targetPrice: 85500,
-        stopPrice: 83000,
-        outcome: isWin ? 'WIN' : 'LOSS',
-        pnlAmount: pnlVal,
-        pnlPercentage: isWin ? 2.1 : -1.4,
-        winRate: 65,
-        riskReward: '1 : 2.0',
-        totalReplays: 1,
-        rules: ['AI Co-Pilot Action', 'Agentic Execution'],
-        notes: `Trade automatically logged by Chart Rabbit AI from user request: "${text}"`,
-        tags: ['AI Agent', 'Auto-Logged'],
-      })
-
-      createJournalEntryApi(newEntry).catch(() => {})
-      actionExecutionPrefix = `⚡ [AGENTIC ACTION EXECUTED]: Successfully logged trade ${newEntry.tradeId} (${newEntry.symbol} ${newEntry.direction}, Outcome: ${newEntry.outcome}, PnL: ${newEntry.pnlAmount >= 0 ? '+' : ''}$${newEntry.pnlAmount}) into your live Trade Journal and Performance Analytics!\n\n`
-    }
-
     try {
       let reply: string | null = null
 
-      // 1. Try FastAPI backend first (if running locally or connected to backend URL)
+      // 1. Try backend chat API first
       try {
         const res = await sendChatMessageApi(currentThread.id, text, activePageContext)
         if (res && (res as any).text) {
-          reply = (res as any).text.replace(/\*\*/g, '')
+          reply = (res as any).text
         }
       } catch (backendErr) {
         console.warn('Backend chat API failed, falling back to direct OpenRouter client:', backendErr)
@@ -212,19 +182,19 @@ export function AIChatPage() {
       }
 
       if (reply) {
-        addMessageToThread(currentThread.id, 'ai', actionExecutionPrefix + reply)
+        addMessageToThread(currentThread.id, 'ai', reply)
       } else {
         // Fallback local heuristic execution
-        addFallbackAiResponse(text, currentThread.id, actionExecutionPrefix)
+        addFallbackAiResponse(text, currentThread.id)
       }
     } catch (err) {
-      addFallbackAiResponse(text, currentThread.id, actionExecutionPrefix)
+      addFallbackAiResponse(text, currentThread.id)
     } finally {
       setIsThinking(false)
     }
   }
 
-  const addFallbackAiResponse = (text: string, threadId: string, prefix = '') => {
+  const addFallbackAiResponse = (text: string, threadId: string) => {
     const journalEntries = getJournalEntries()
     const totalTrades = journalEntries.length
     const totalPnL = journalEntries.reduce((acc, e) => acc + (e.pnlAmount || 0), 0)
@@ -234,21 +204,85 @@ export function AIChatPage() {
     let aiResponse = ''
     const lower = text.toLowerCase()
 
-    if (activePageContext === 'chart') {
-      aiResponse = `Chart Co-Pilot Analysis:\n\n- Active Setup: Replay candle price action evaluated.\n- Key Zone: Liquidity sweep identified below previous low with target order block overhead.\n- Risk Recommendation: Keep stop loss below recent swing low with minimum 1:2.0 Risk-to-Reward ratio.`
-    } else if (activePageContext === 'journal') {
-      aiResponse = `Trade Journal Audit:\n\n- Total Trades Logged: ${totalTrades}\n- Net PnL: $${totalPnL}\n- Win Rate: ${winRate}%\n- Audit Insight: Maintain consistency in entry signals and avoid emotional position resizing.`
-    } else if (activePageContext === 'analytics') {
-      aiResponse = `Performance Analytics Evaluation:\n\n- Current Win Rate: ${winRate}%\n- Logged Volume: ${totalTrades} executions\n- Recommendation: Focus on quality over frequency. Cut losing trades early at 1R.`
+    if (lower.includes('order block') || lower.includes('draw') || lower.includes('long') || lower.includes('setup') || lower.includes('chart')) {
+      const isEth = lower.includes('eth')
+      const isSol = lower.includes('sol')
+      const symbol = isEth ? 'ETHUSDT' : isSol ? 'SOLUSDT' : 'BTCUSDT'
+      const basePrice = isEth ? 2750 : isSol ? 192 : 84200
+      const obLow = Math.round(basePrice * 0.99)
+      const obHigh = Math.round(basePrice * 0.996)
+      const entry = Math.round(basePrice * 0.995)
+      const tp = Math.round(basePrice * 1.025)
+      const sl = Math.round(basePrice * 0.985)
+
+      aiResponse = `Technical Analysis & ICT Setup for ${symbol}:\n\n` +
+        `- Market Structure: Bullish continuation from key demand zone.\n` +
+        `- Order Block Zone: $${obLow.toLocaleString()} - $${obHigh.toLocaleString()}\n` +
+        `- Trade Setup: LONG @ $${entry.toLocaleString()} | Target: $${tp.toLocaleString()} | Stop Loss: $${sl.toLocaleString()}\n` +
+        `- Risk-to-Reward: 1:2.5 target with institutional liquidity sweep confirmation.\n\n` +
+        `\`\`\`chart-action\n` +
+        `{\n` +
+        `  "type": "draw_setup",\n` +
+        `  "symbol": "${symbol}",\n` +
+        `  "timeframe": "15m",\n` +
+        `  "title": "${symbol} ICT Order Block & Long Setup",\n` +
+        `  "description": "Bullish Order Block ($${obLow} - $${obHigh}) with 1:2.5 R:R Long Setup",\n` +
+        `  "drawings": [\n` +
+        `    {\n` +
+        `      "name": "rect",\n` +
+        `      "label": "Bullish Order Block",\n` +
+        `      "points": [{ "value": ${obLow} }, { "value": ${obHigh} }],\n` +
+        `      "zoneType": "order_block"\n` +
+        `    },\n` +
+        `    {\n` +
+        `      "name": "longPositionOverlay",\n` +
+        `      "label": "Long Position Setup",\n` +
+        `      "points": [{ "value": ${entry} }, { "value": ${tp} }, { "value": ${sl} }],\n` +
+        `      "zoneType": "position"\n` +
+        `    }\n` +
+        `  ]\n` +
+        `}\n` +
+        `\`\`\``
+    } else if (lower.includes('log') && (lower.includes('trade') || lower.includes('win') || lower.includes('loss') || lower.includes('pnl'))) {
+      const isWin = lower.includes('win') || (!lower.includes('loss') && !text.includes('-'))
+      const pnlMatch = text.match(/[\+\-]?\$?(\d+(\.\d+)?)/)
+      const parsedPnL = pnlMatch ? parseFloat(pnlMatch[1]) : 350
+      const pnlVal = isWin ? Math.abs(parsedPnL) : -Math.abs(parsedPnL)
+      const symbol = lower.includes('eth') ? 'ETHUSDT' : lower.includes('sol') ? 'SOLUSDT' : 'BTCUSDT'
+
+      aiResponse = `I have logged this execution to your live Trade Journal:\n\n` +
+        `- Symbol: ${symbol}\n` +
+        `- Direction: ${lower.includes('short') ? 'SHORT' : 'LONG'}\n` +
+        `- Outcome: ${isWin ? 'WIN' : 'LOSS'}\n` +
+        `- PnL: ${pnlVal >= 0 ? `+$${pnlVal}` : `-$${Math.abs(pnlVal)}`}\n\n` +
+        `\`\`\`chart-action\n` +
+        `{\n` +
+        `  "type": "log_trade",\n` +
+        `  "title": "Trade Logged to Journal",\n` +
+        `  "tradeData": {\n` +
+        `    "symbol": "${symbol}",\n` +
+        `    "type": "${lower.includes('short') ? 'SHORT' : 'LONG'}",\n` +
+        `    "entryPrice": 84200,\n` +
+        `    "pnlAmount": ${pnlVal},\n` +
+        `    "outcome": "${isWin ? 'WIN' : 'LOSS'}",\n` +
+        `    "notes": "Logged via AI Chat"\n` +
+        `  }\n` +
+        `}\n` +
+        `\`\`\``
+    } else if (lower.includes('fib') || lower.includes('fibonacci') || lower.includes('tool')) {
+      aiResponse = `Fibonacci Retracement tool selected. You can now drag on the chart canvas between key swing points.\n\n` +
+        `\`\`\`chart-action\n` +
+        `{\n` +
+        `  "type": "activate_tool",\n` +
+        `  "toolName": "fibonacciRetracement",\n` +
+        `  "title": "Fibonacci Retracement Tool Selected"\n` +
+        `}\n` +
+        `\`\`\``
     } else {
-      if (lower.includes('journal') || lower.includes('performance') || lower.includes('win rate') || lower.includes('pnl')) {
-        aiResponse = `Real-Time Journal Performance Summary:\n\n- Total Logged Trades: ${totalTrades}\n- Total Net PnL: ${totalPnL >= 0 ? `+$${totalPnL.toLocaleString()}` : `-$${Math.abs(totalPnL).toLocaleString()}`}\n- Overall Win Rate: ${winRate}% (${winCount} Wins / ${totalTrades - winCount} Losses)\n\nChart Rabbit AI Recommendation: Maintain strict risk management with a minimum 1:2.0 Risk-to-Reward ratio.`
-      } else {
-        aiResponse = `Thank you for your inquiry on "${text}".\n\nChart Rabbit AI co-pilot is active. Your journal data (${totalTrades} logged trades, ${winRate}% Win Rate) has been evaluated for strategy execution.`
-      }
+      aiResponse = `Real-Time Journal Performance Summary:\n\n- Total Logged Trades: ${totalTrades}\n- Total Net PnL: ${totalPnL >= 0 ? `+$${totalPnL.toLocaleString()}` : `-$${Math.abs(totalPnL).toLocaleString()}`}\n- Overall Win Rate: ${winRate}% (${winCount} Wins / ${totalTrades - winCount} Losses)\n\nChart Rabbit AI is ready to operate your chart, draw technical levels, or manage trade executions.`
     }
 
-    addMessageToThread(threadId, 'ai', prefix + aiResponse)
+    addMessageToThread(threadId, 'ai', aiResponse)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -259,10 +293,24 @@ export function AIChatPage() {
   }
 
   const handleCopyMessage = (msgId: string, text: string) => {
-    const cleanedText = text.replace(/\*\*/g, '')
-    navigator.clipboard.writeText(cleanedText)
+    const { cleanText } = parseAiResponseActions(text)
+    navigator.clipboard.writeText(cleanText.replace(/\*\*/g, ''))
     setCopiedMsgId(msgId)
     setTimeout(() => setCopiedMsgId(null), 2000)
+  }
+
+  const handleCardNavigate = (page: 'chart' | 'journal' | 'analytics' | 'aichat', symbol?: string, timeframe?: string) => {
+    if (page === 'chart' && (symbol || timeframe)) {
+      setPendingChartNavigation({
+        page: 'chart',
+        symbol,
+        timeframe,
+        timestamp: Date.now(),
+      })
+    }
+    if (onNavigateToPage) {
+      onNavigateToPage(page, symbol, timeframe)
+    }
   }
 
   const activeOption = PAGE_CONTEXT_OPTIONS.find((opt) => opt.id === activePageContext) || PAGE_CONTEXT_OPTIONS[3]
@@ -296,41 +344,53 @@ export function AIChatPage() {
           </div>
         ) : (
           <div className="messages-list">
-            {currentThread?.messages.map((msg) => (
-              <div key={msg.id} className={`message-row ${msg.sender === 'user' ? 'user-row' : 'ai-row'}`}>
-                {/* AI Response Logo Avatar */}
-                {msg.sender === 'ai' && (
-                  <div className="ai-avatar-box">
-                    <img src="/Logo.jpeg" alt="Chart Rabbit AI Logo" className="ai-logo-avatar-img" />
-                  </div>
-                )}
+            {currentThread?.messages.map((msg) => {
+              const { cleanText, action } = msg.sender === 'ai' ? parseAiResponseActions(msg.text) : { cleanText: msg.text, action: null }
 
-                <div className="message-bubble-wrapper">
-                  <div className="message-sender-meta">
-                    <span className="sender-name">
-                      {msg.sender === 'ai' ? 'Chart Rabbit AI' : 'You'}
-                    </span>
-                    <span className="message-time">{msg.timestamp}</span>
-                  </div>
+              return (
+                <div key={msg.id} className={`message-row ${msg.sender === 'user' ? 'user-row' : 'ai-row'}`}>
+                  {/* AI Response Logo Avatar */}
+                  {msg.sender === 'ai' && (
+                    <div className="ai-avatar-box">
+                      <img src="/Logo.jpeg" alt="Chart Rabbit AI Logo" className="ai-logo-avatar-img" />
+                    </div>
+                  )}
 
-                  <div className={`message-bubble ${msg.sender === 'user' ? 'user-bubble' : 'ai-bubble'}`}>
-                    <div className="message-text">{msg.text.replace(/\*\*/g, '')}</div>
+                  <div className="message-bubble-wrapper">
+                    <div className="message-sender-meta">
+                      <span className="sender-name">
+                        {msg.sender === 'ai' ? 'Chart Rabbit AI' : 'You'}
+                      </span>
+                      <span className="message-time">{msg.timestamp}</span>
+                    </div>
 
-                    {msg.sender === 'ai' && (
-                      <div className="ai-bubble-actions">
-                        <button
-                          className="action-icon-btn"
-                          onClick={() => handleCopyMessage(msg.id, msg.text)}
-                          title="Copy text"
-                        >
-                          {copiedMsgId === msg.id ? '✓ Copied' : 'Copy'}
-                        </button>
-                      </div>
-                    )}
+                    <div className={`message-bubble ${msg.sender === 'user' ? 'user-bubble' : 'ai-bubble'}`}>
+                      <div className="message-text">{cleanText.replace(/\*\*/g, '')}</div>
+
+                      {/* Render Interactive Action Card if AI output an action */}
+                      {action && (
+                        <AIActionCard
+                          action={action}
+                          onNavigateToPage={handleCardNavigate}
+                        />
+                      )}
+
+                      {msg.sender === 'ai' && (
+                        <div className="ai-bubble-actions">
+                          <button
+                            className="action-icon-btn"
+                            onClick={() => handleCopyMessage(msg.id, msg.text)}
+                            title="Copy text"
+                          >
+                            {copiedMsgId === msg.id ? '✓ Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
 
             {/* AI Thinking Animation */}
             {isThinking && (
@@ -379,46 +439,27 @@ export function AIChatPage() {
         )}
       </div>
 
-      {/* Input Textarea Bar */}
-      <div className="chat-input-bar-container">
-        <div className="chat-input-box">
+      {/* Input Bar */}
+      <div className="chat-input-wrapper">
+        <div className="chat-input-container">
           <textarea
             className="chat-textarea"
             placeholder={activeOption.placeholder}
+            rows={1}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            rows={2}
           />
 
           <div className="chat-input-actions">
-            <div className="left-actions">
-              <button className="input-tool-btn" title="Attach chart screenshot or file">
-                <PaperclipIcon />
-              </button>
-              <select
-                className="input-model-select"
-                value={selectedModel}
-                onChange={(e) => handleModelChange(e.target.value)}
-              >
-                {AI_MODEL_OPTIONS.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="right-actions">
-              <button
-                className={`send-msg-btn ${inputText.trim() ? 'active' : ''}`}
-                onClick={() => handleSendMessage()}
-                disabled={!inputText.trim() || isThinking}
-                title="Send message"
-              >
-                <SendIcon />
-              </button>
-            </div>
+            <button
+              className={`chat-send-btn ${inputText.trim() ? 'active' : ''}`}
+              onClick={() => handleSendMessage()}
+              disabled={!inputText.trim() || isThinking}
+              title="Send message"
+            >
+              <SendIcon width="16" height="16" />
+            </button>
           </div>
         </div>
       </div>

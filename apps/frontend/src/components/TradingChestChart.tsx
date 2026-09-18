@@ -8,8 +8,17 @@ import { registerPositionOverlays } from '../utils/positionOverlays'
 import { registerReplayMaskOverlay, REPLAY_MASK_OVERLAY_NAME, REPLAY_MASK_OVERLAY_ID } from '../utils/replayMaskOverlay'
 import { resolveSymbol, ALL_POPULAR_SYMBOLS } from '../utils/symbolResolver'
 import { loadCandles, saveCandles } from '../utils/candleDB'
-import { addJournalEntry } from '../utils/tradeJournalStore'
 import { fetchMultiAssetHistory, periodToBinanceInterval, generateDeterministicCandles } from '../utils/multiAssetDatafeed'
+import {
+  getPersistedDrawings,
+  savePersistedDrawing,
+  removePersistedDrawing,
+  clearPersistedDrawings,
+  subscribeChartActions,
+  getPendingChartNavigation,
+  clearPendingChartNavigation,
+  type ChartDrawing,
+} from '../utils/chartActionStore'
 
 registerPositionOverlays()
 registerReplayMaskOverlay()
@@ -493,6 +502,49 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     },
   }), [])
 
+  const hydrateDrawingsForSymbol = (cw: any, symbol: string) => {
+    if (!cw || typeof cw.createOverlay !== 'function') return
+    const cleanSymbol = (symbol || 'BTCUSDT').toUpperCase().replace('/', '')
+    const drawings = getPersistedDrawings(cleanSymbol)
+    const data = cw.getDataList() || []
+    if (data.length === 0) return
+
+    const lastCandle = data[data.length - 1]
+    const recentCandle = data[Math.max(0, data.length - 25)] || lastCandle
+    const tNow = lastCandle?.timestamp || Date.now()
+    const tRecent = recentCandle?.timestamp || (tNow - 25 * 60000)
+
+    drawings.forEach((d) => {
+      try {
+        if (cw.getOverlayById?.(d.id)) return
+
+        const points = (d.points || []).map((pt, idx) => {
+          let ts = pt.timestamp
+          if (!ts) {
+            ts = idx === 0 ? tRecent : tNow
+          }
+          return {
+            timestamp: ts,
+            value: pt.value,
+            dataIndex: pt.dataIndex,
+          }
+        })
+
+        cw.createOverlay({
+          id: d.id,
+          name: d.name,
+          points,
+          styles: d.styles,
+          extendData: d.extendData,
+          lock: d.lock || false,
+          visible: d.visible !== false,
+        })
+      } catch (err) {
+        console.warn('[TradingChestChart] Error hydrating drawing:', d, err)
+      }
+    })
+  }
+
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -534,6 +586,10 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         if (data && data.length > originalDataRef.current.length) {
           originalDataRef.current = data.slice()
         }
+        // Hydrate persisted AI/user drawings
+        setTimeout(() => {
+          hydrateDrawingsForSymbol(chartWidget, currentSymbolTickerRef.current)
+        }, 150)
       })
 
       chartWidget.setLoadDataCallback(async (params) => {
@@ -682,6 +738,57 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
 
     chartRef.current = chart
+
+    // Check pending cross-page navigation from AI Chat
+    const pendingNav = getPendingChartNavigation()
+    if (pendingNav && pendingNav.symbol) {
+      const resolved = resolveSymbol(pendingNav.symbol)
+      if (resolved && resolved.symbolInfo) {
+        chart.setSymbol(resolved.symbolInfo)
+      }
+      clearPendingChartNavigation()
+    }
+
+    // Subscribe to live AI chart actions
+    const unsubActions = subscribeChartActions((action) => {
+      const cw = (chart as any)?.getChart?.() || chart
+      if (!cw) return
+
+      if (action.type === 'switch_chart' || action.type === 'draw_setup') {
+        if (action.symbol && action.symbol.toUpperCase().replace('/', '') !== currentSymbolTickerRef.current.toUpperCase().replace('/', '')) {
+          const resolved = resolveSymbol(action.symbol)
+          if (typeof chart.setSymbol === 'function') {
+            chart.setSymbol(resolved.symbolInfo)
+          }
+        }
+      }
+
+      if (action.type === 'draw_setup') {
+        const targetSymbol = (action.symbol || currentSymbolTickerRef.current).toUpperCase().replace('/', '')
+        setTimeout(() => {
+          hydrateDrawingsForSymbol(cw, targetSymbol)
+        }, 300)
+      }
+
+      if (action.type === 'activate_tool' && action.toolName) {
+        if (typeof cw.createOverlay === 'function') {
+          try {
+            cw.createOverlay({ name: action.toolName })
+          } catch (err) {
+            console.warn('[TradingChestChart] Error activating tool:', action.toolName, err)
+          }
+        }
+      }
+
+      if (action.type === 'start_replay') {
+        startOurReplay()
+      }
+
+      if (action.type === 'clear_drawings') {
+        const cleanSymbol = currentSymbolTickerRef.current.toUpperCase().replace('/', '')
+        clearPersistedDrawings(cleanSymbol)
+      }
+    })
 
     const containerEl = containerRef.current
     let resizeObserver: ResizeObserver | null = null
@@ -905,6 +1012,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       if (resizeObserver) {
         resizeObserver.disconnect()
       }
+      unsubActions()
       chart.dispose()
       chartRef.current = null
     }

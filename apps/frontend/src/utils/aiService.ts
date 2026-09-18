@@ -27,9 +27,9 @@ export function buildSystemContext(activePage: string = 'aichat'): string {
 
   const pageFocus: Record<string, string> = {
     chart:
-      'The user is viewing the Live Trading Chart. Act as an active chart co-pilot: provide immediate ICT technical analysis (Order Blocks, Fair Value Gaps, Market Structure Shifts), suggest exact Entry / Stop Loss / Take Profit prices, and assist with trade logging.',
+      'The user is viewing the Live Trading Chart. Act as an active chart co-pilot: provide immediate ICT technical analysis (Order Blocks, Fair Value Gaps, Market Structure Shifts), suggest exact Entry / Stop Loss / Take Profit prices, and trigger chart drawings & tools.',
     journal:
-      'The user is viewing the Trade Journal. Act as a trading journal auditor: analyze their logged trades, identify revenge trading or risk rule violations, evaluate win/loss distribution, and suggest discipline improvements.',
+      'The user is viewing the Trade Journal. Act as a trading journal auditor: analyze their logged trades, identify revenge trading or risk rule violations, evaluate win/loss distribution, and auto-log trades.',
     analytics:
       'The user is viewing Performance Analytics. Act as a quantitative portfolio strategist: break down Net PnL, Win Rate %, Profit Factor, R:R ratios, and performance curves.',
     aichat:
@@ -48,7 +48,54 @@ export function buildSystemContext(activePage: string = 'aichat'): string {
     `- Win Rate: ${winRate}% (${winCount} Wins / ${lossCount} Losses)\n` +
     `- Profit Factor: ${profitFactor}\n` +
     `- Risk-to-Reward Target: 1:2.0\n\n` +
-    `Instructions: Be direct, highly analytical, actionable, and agentic. Adapt your response directly to what the user is analyzing on their active page. Do NOT use markdown bold formatting like **text**. Keep responses clean and readable without any double asterisks (**).`
+    `AGENTIC ACTION SYSTEM:\n` +
+    `Whenever you provide technical analysis, draw levels/order blocks, suggest a trade setup, activate a tool, or log a trade, always include a structured action block at the very end of your response in this exact format:\n` +
+    `\`\`\`chart-action\n` +
+    `{\n` +
+    `  "type": "draw_setup",\n` +
+    `  "symbol": "BTCUSDT",\n` +
+    `  "timeframe": "15m",\n` +
+    `  "title": "Bullish Order Block & Long Setup",\n` +
+    `  "description": "ICT Bullish Order Block with 1:2.5 R:R Long Setup",\n` +
+    `  "drawings": [\n` +
+    `    {\n` +
+    `      "name": "rect",\n` +
+    `      "label": "Bullish Order Block",\n` +
+    `      "points": [{ "value": 63800 }, { "value": 64200 }],\n` +
+    `      "zoneType": "order_block"\n` +
+    `    },\n` +
+    `    {\n` +
+    `      "name": "longPositionOverlay",\n` +
+    `      "label": "Long Setup",\n` +
+    `      "points": [{ "value": 64100 }, { "value": 66200 }, { "value": 63400 }],\n` +
+    `      "zoneType": "position"\n` +
+    `    }\n` +
+    `  ]\n` +
+    `}\n` +
+    `\`\`\`\n\n` +
+    `Supported drawing names:\n` +
+    `- "rect" (Order Blocks, Fair Value Gaps, Consolidation zones)\n` +
+    `- "horizontalStraightLine" (Support, Resistance, Daily Highs/Lows)\n` +
+    `- "longPositionOverlay" (Long Position risk/reward: points: [entry, takeProfit, stopLoss])\n` +
+    `- "shortPositionOverlay" (Short Position risk/reward: points: [entry, takeProfit, stopLoss])\n` +
+    `- "fibonacciRetracement" (Fibonacci levels: points: [swingHigh, swingLow])\n` +
+    `- "segmentLine" (Trendlines, liquidity sweeps)\n\n` +
+    `If the user asks to log a trade:\n` +
+    `\`\`\`chart-action\n` +
+    `{\n` +
+    `  "type": "log_trade",\n` +
+    `  "title": "Trade Logged to Journal",\n` +
+    `  "tradeData": {\n` +
+    `    "symbol": "BTCUSDT",\n` +
+    `    "type": "LONG",\n` +
+    `    "entryPrice": 64100,\n` +
+    `    "pnlAmount": 450,\n` +
+    `    "outcome": "WIN",\n` +
+    `    "notes": "ICT MSS confirmation"\n` +
+    `  }\n` +
+    `}\n` +
+    `\`\`\`\n\n` +
+    `Instructions: Be direct, highly analytical, actionable, and agentic. Do NOT use double asterisks (**) in your regular commentary.`
   )
 }
 
@@ -100,7 +147,7 @@ export async function generateClientAiResponse(
       const json = await res.json()
       const content = json?.choices?.[0]?.message?.content
       if (content && typeof content === 'string' && content.trim().length > 0) {
-        return content.replace(/\*\*/g, '').trim()
+        return content.trim()
       }
     } catch (err) {
       console.warn(`[OpenRouter] Failed with model ${model}:`, err)

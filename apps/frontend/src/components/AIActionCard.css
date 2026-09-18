@@ -1,0 +1,128 @@
+.ai-action-card {
+  margin-top: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.ai-action-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.ai-action-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-action-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.ai-action-card-icon {
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-action-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-action-badge {
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+
+.ai-action-badge.symbol-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.ai-action-card-body {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.ai-action-drawings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.ai-action-drawing-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #1e293b;
+}
+
+.ai-action-bullet {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #2563eb;
+  flex-shrink: 0;
+}
+
+.ai-action-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.ai-action-primary-btn {
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.ai-action-primary-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+
+.ai-action-primary-btn:active {
+  transform: scale(0.98);
+}

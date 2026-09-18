@@ -164,7 +164,7 @@ function App() {
 
           {activePage === 'aichat' && (
             <div className="page-view">
-              <AIChatPage />
+              <AIChatPage onNavigateToPage={(page) => handleSelectPage(page)} />
             </div>
           )}
         </main>
