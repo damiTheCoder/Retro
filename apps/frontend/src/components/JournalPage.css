@@ -853,16 +853,19 @@
   .journal-page {
     padding: 16px 14px !important;
     gap: 16px !important;
+    background-color: #ffffff !important;
   }
 
   .journal-calendar-card {
-    padding: 16px 14px !important;
+    padding: 0 !important;
     border-radius: 14px !important;
+    background-color: #ffffff !important;
   }
 
   .journal-card-container {
-    padding: 16px 14px !important;
+    padding: 0 !important;
     border-radius: 14px !important;
+    background-color: #ffffff !important;
   }
 
   .journal-controls {

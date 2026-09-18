@@ -788,4 +788,26 @@
     right: 0 !important;
     transform: translateX(10px) !important;
   }
+
+  /* Mobile: white content backgrounds, keep chat input grey */
+  .analytics-page,
+  .kpi-card,
+  .chart-card,
+  .table-card,
+  .horizontal-bar-item,
+  .popover-pills-row,
+  .date-dropdown-popover,
+  .hbar-track,
+  .table-tag,
+  .winrate-bar-track {
+    background-color: #ffffff !important;
+  }
+
+  .chat-input-box {
+    background: #e8e8e8 !important;
+  }
+
+  .chat-input-box:focus-within {
+    background: #e8e8e8 !important;
+  }
 }
