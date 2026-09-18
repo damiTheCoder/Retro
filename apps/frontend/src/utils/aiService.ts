@@ -1,14 +1,180 @@
 import { getJournalEntries } from './tradeJournalStore'
+import { dispatchChartAction, type ChartActionPayload } from './chartActionStore'
+import { addJournalEntry } from './tradeJournalStore'
 
 const OPENROUTER_API_KEY =
   (import.meta.env?.VITE_OPENROUTER_API_KEY as string) || ''
 
-// Reliable active free models on OpenRouter (tested & verified working)
-const CANDIDATE_MODELS = [
+// Top function-calling capable models on OpenRouter
+export const CANDIDATE_MODELS = [
+  'meta-llama/llama-3.3-70b-instruct',
+  'deepseek/deepseek-chat',
+  'qwen/qwen-2.5-72b-instruct',
+  'mistralai/mistral-large-2411',
+  'google/gemini-2.0-flash-001',
+  'google/gemini-2.0-flash-lite-preview-02-05:free',
+  'meta-llama/llama-3.1-8b-instruct:free',
   'deepseek/deepseek-v4-flash-0731:free',
-  'inclusionai/ling-3.0-flash-fin:free',
   'qwen/qwen3.8-27b:free',
-  'nex-agi/nex-n2.5-mini:free',
+  'inclusionai/ling-3.0-flash-fin:free',
+]
+
+// Native OpenRouter Tool Definitions
+export const OPENROUTER_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'draw_chart_setup',
+      description: 'Plots technical analysis overlays, Order Blocks, Fair Value Gaps (FVG), Support/Resistance levels, Trendlines, and Long/Short Position risk-reward setups directly onto the live trading chart canvas.',
+      parameters: {
+        type: 'object',
+        properties: {
+          symbol: {
+            type: 'string',
+            description: 'The market ticker symbol (e.g. BTCUSDT, ETHUSDT, SOLUSDT, EURUSD, XAUUSD, AAPL)',
+          },
+          timeframe: {
+            type: 'string',
+            description: 'The chart timeframe (e.g. 1m, 5m, 15m, 1h, 4h, 1d)',
+          },
+          title: {
+            type: 'string',
+            description: 'Clear title of the plotted setup (e.g. "BTCUSDT 15M Bullish Order Block + Long Setup")',
+          },
+          description: {
+            type: 'string',
+            description: 'Analytical summary of the technical setup and trade rationale',
+          },
+          drawings: {
+            type: 'array',
+            description: 'Array of geometric overlays and position boxes to draw on the chart canvas',
+            items: {
+              type: 'object',
+              properties: {
+                name: {
+                  type: 'string',
+                  enum: [
+                    'rect',
+                    'horizontalStraightLine',
+                    'longPositionOverlay',
+                    'shortPositionOverlay',
+                    'fibonacciRetracement',
+                    'segmentLine',
+                    'priceLine',
+                  ],
+                  description: 'The chart overlay type: rect (Order Block/FVG), horizontalStraightLine (Support/Resistance), longPositionOverlay (Long risk/reward: entry, TP, SL), shortPositionOverlay (Short risk/reward: entry, TP, SL), fibonacciRetracement (Fib levels), segmentLine (Trendline)',
+                },
+                label: {
+                  type: 'string',
+                  description: 'Display label for the overlay (e.g. "4H Bullish Order Block", "Daily Resistance", "Long Position Setup")',
+                },
+                zoneType: {
+                  type: 'string',
+                  enum: ['order_block', 'fvg', 'support', 'resistance', 'liquidity', 'position'],
+                },
+                points: {
+                  type: 'array',
+                  description: 'Price coordinates for the overlay. For rect: 2 price levels [bottom, top]. For longPositionOverlay/shortPositionOverlay: 3 price levels [entryPrice, takeProfitPrice, stopLossPrice]. For horizontalStraightLine: 1 price level [price].',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      value: { type: 'number', description: 'Price level in dollars / quotes' },
+                    },
+                    required: ['value'],
+                  },
+                },
+              },
+              required: ['name', 'points'],
+            },
+          },
+        },
+        required: ['symbol', 'title', 'drawings'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'activate_chart_tool',
+      description: 'Activates a drawing tool from the chart toolbar so the user can interactively draw on the chart canvas.',
+      parameters: {
+        type: 'object',
+        properties: {
+          toolName: {
+            type: 'string',
+            enum: [
+              'fibonacciRetracement',
+              'longPositionOverlay',
+              'shortPositionOverlay',
+              'rect',
+              'horizontalStraightLine',
+              'segmentLine',
+              'straightLine',
+              'rayLine',
+              'priceRange',
+              'brush',
+            ],
+            description: 'Name of the toolbar tool to activate',
+          },
+          title: {
+            type: 'string',
+            description: 'Title explaining which tool is active',
+          },
+        },
+        required: ['toolName'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'switch_chart_symbol',
+      description: 'Switches the live chart to a specific trading pair and timeframe.',
+      parameters: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string', description: 'e.g. BTCUSDT, ETHUSDT, SOLUSDT, EURUSD, XAUUSD' },
+          timeframe: { type: 'string', description: 'e.g. 1m, 5m, 15m, 1h, 4h, 1d' },
+        },
+        required: ['symbol'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'start_bar_replay',
+      description: 'Starts deterministic bar replay mode for market structure backtesting.',
+      parameters: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          session: { type: 'string', description: 'e.g. "NY Open", "London Open", "Asia Session"' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'log_trade_journal',
+      description: 'Automatically records a trade execution into the user live Trade Journal and Performance Analytics.',
+      parameters: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string', description: 'e.g. BTCUSDT' },
+          direction: { type: 'string', enum: ['LONG', 'SHORT'] },
+          entryPrice: { type: 'number' },
+          stopLoss: { type: 'number' },
+          takeProfit: { type: 'number' },
+          pnlAmount: { type: 'number', description: 'Profit or loss amount in USD' },
+          outcome: { type: 'string', enum: ['WIN', 'LOSS', 'OPEN'] },
+          notes: { type: 'string' },
+        },
+        required: ['symbol', 'direction', 'entryPrice', 'outcome'],
+      },
+    },
+  },
 ]
 
 export function buildSystemContext(activePage: string = 'aichat'): string {
@@ -25,78 +191,80 @@ export function buildSystemContext(activePage: string = 'aichat'): string {
   const grossLoss = losses.reduce((a, b) => a + b, 0)
   const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : grossProfit > 0 ? '99.0' : '0.0'
 
-  const pageFocus: Record<string, string> = {
-    chart:
-      'The user is viewing the Live Trading Chart. Act as an active chart co-pilot: provide immediate ICT technical analysis (Order Blocks, Fair Value Gaps, Market Structure Shifts), suggest exact Entry / Stop Loss / Take Profit prices, and trigger chart drawings & tools.',
-    journal:
-      'The user is viewing the Trade Journal. Act as a trading journal auditor: analyze their logged trades, identify revenge trading or risk rule violations, evaluate win/loss distribution, and auto-log trades.',
-    analytics:
-      'The user is viewing Performance Analytics. Act as a quantitative portfolio strategist: break down Net PnL, Win Rate %, Profit Factor, R:R ratios, and performance curves.',
-    aichat:
-      'The user is in the main AI Co-Pilot Chat view. Provide comprehensive, agentic trading assistance across technical chart setups, risk management, and journal history.',
-  }
-
-  const focusDesc = pageFocus[activePage.toLowerCase()] || pageFocus.aichat
-
   return (
     `You are Chart Rabbit AI, an autonomous agentic trading co-pilot and ICT strategy analyst.\n\n` +
     `CURRENT ACTIVE PAGE CONTEXT: [${activePage.toUpperCase()}]\n` +
-    `${focusDesc}\n\n` +
     `USER LIVE TRADE JOURNAL METRICS:\n` +
     `- Total Logged Trades: ${totalTrades}\n` +
     `- Net PnL: ${totalPnL >= 0 ? `+$${totalPnL.toFixed(2)}` : `-$${Math.abs(totalPnL).toFixed(2)}`}\n` +
     `- Win Rate: ${winRate}% (${winCount} Wins / ${lossCount} Losses)\n` +
     `- Profit Factor: ${profitFactor}\n` +
     `- Risk-to-Reward Target: 1:2.0\n\n` +
-    `AGENTIC ACTION SYSTEM:\n` +
-    `Whenever you provide technical analysis, draw levels/order blocks, suggest a trade setup, activate a tool, or log a trade, always include a structured action block at the very end of your response in this exact format:\n` +
-    `\`\`\`chart-action\n` +
-    `{\n` +
-    `  "type": "draw_setup",\n` +
-    `  "symbol": "BTCUSDT",\n` +
-    `  "timeframe": "15m",\n` +
-    `  "title": "Bullish Order Block & Long Setup",\n` +
-    `  "description": "ICT Bullish Order Block with 1:2.5 R:R Long Setup",\n` +
-    `  "drawings": [\n` +
-    `    {\n` +
-    `      "name": "rect",\n` +
-    `      "label": "Bullish Order Block",\n` +
-    `      "points": [{ "value": 63800 }, { "value": 64200 }],\n` +
-    `      "zoneType": "order_block"\n` +
-    `    },\n` +
-    `    {\n` +
-    `      "name": "longPositionOverlay",\n` +
-    `      "label": "Long Setup",\n` +
-    `      "points": [{ "value": 64100 }, { "value": 66200 }, { "value": 63400 }],\n` +
-    `      "zoneType": "position"\n` +
-    `    }\n` +
-    `  ]\n` +
-    `}\n` +
-    `\`\`\`\n\n` +
-    `Supported drawing names:\n` +
-    `- "rect" (Order Blocks, Fair Value Gaps, Consolidation zones)\n` +
-    `- "horizontalStraightLine" (Support, Resistance, Daily Highs/Lows)\n` +
-    `- "longPositionOverlay" (Long Position risk/reward: points: [entry, takeProfit, stopLoss])\n` +
-    `- "shortPositionOverlay" (Short Position risk/reward: points: [entry, takeProfit, stopLoss])\n` +
-    `- "fibonacciRetracement" (Fibonacci levels: points: [swingHigh, swingLow])\n` +
-    `- "segmentLine" (Trendlines, liquidity sweeps)\n\n` +
-    `If the user asks to log a trade:\n` +
-    `\`\`\`chart-action\n` +
-    `{\n` +
-    `  "type": "log_trade",\n` +
-    `  "title": "Trade Logged to Journal",\n` +
-    `  "tradeData": {\n` +
-    `    "symbol": "BTCUSDT",\n` +
-    `    "type": "LONG",\n` +
-    `    "entryPrice": 64100,\n` +
-    `    "pnlAmount": 450,\n` +
-    `    "outcome": "WIN",\n` +
-    `    "notes": "ICT MSS confirmation"\n` +
-    `  }\n` +
-    `}\n` +
-    `\`\`\`\n\n` +
-    `Instructions: Be direct, highly analytical, actionable, and agentic. Do NOT use double asterisks (**) in your regular commentary.`
+    `TOOL CALLING INSTRUCTIONS:\n` +
+    `- When asked to analyze a chart, draw levels, plot Order Blocks / Fair Value Gaps, or setup a trade, CALL the 'draw_chart_setup' tool with exact price coordinates!\n` +
+    `- When asked to select or activate a drawing tool, CALL 'activate_chart_tool'.\n` +
+    `- When asked to switch symbols or timeframes, CALL 'switch_chart_symbol'.\n` +
+    `- When asked to log a trade, CALL 'log_trade_journal'.\n` +
+    `- Keep your textual commentary concise, highly analytical, actionable, and agentic. Do NOT use double asterisks (**) in your markdown output.`
   )
+}
+
+export function convertToolCallToAction(toolCall: any): ChartActionPayload | null {
+  try {
+    const fnName = toolCall?.function?.name
+    const rawArgs = toolCall?.function?.arguments
+    const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs || {}
+
+    if (fnName === 'draw_chart_setup') {
+      return {
+        type: 'draw_setup',
+        symbol: args.symbol || 'BTCUSDT',
+        timeframe: args.timeframe || '15m',
+        title: args.title || `${args.symbol || 'BTCUSDT'} Setup Plotted`,
+        description: args.description || 'AI Plotted Technical Analysis Setup',
+        drawings: args.drawings || [],
+      }
+    }
+    if (fnName === 'activate_chart_tool') {
+      return {
+        type: 'activate_tool',
+        toolName: args.toolName,
+        title: args.title || `${args.toolName} Activated`,
+      }
+    }
+    if (fnName === 'switch_chart_symbol') {
+      return {
+        type: 'switch_chart',
+        symbol: args.symbol,
+        timeframe: args.timeframe,
+      }
+    }
+    if (fnName === 'start_bar_replay') {
+      return {
+        type: 'start_replay',
+        symbol: args.symbol,
+      }
+    }
+    if (fnName === 'log_trade_journal') {
+      return {
+        type: 'log_trade',
+        title: `Logged ${args.direction} ${args.symbol}`,
+        tradeData: {
+          symbol: args.symbol || 'BTCUSDT',
+          type: args.direction || 'LONG',
+          entryPrice: args.entryPrice || 0,
+          stopLoss: args.stopLoss,
+          takeProfit: args.takeProfit,
+          pnlAmount: args.pnlAmount,
+          outcome: args.outcome || 'WIN',
+          notes: args.notes || 'Logged by AI Agent tool call',
+        },
+      }
+    }
+  } catch (err) {
+    console.warn('[aiService] Error parsing tool call:', err)
+  }
+  return null
 }
 
 export async function generateClientAiResponse(
@@ -119,7 +287,7 @@ export async function generateClientAiResponse(
   for (const model of CANDIDATE_MODELS) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 20000)
+      const timeoutId = setTimeout(() => controller.abort(), 25000)
 
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -132,6 +300,8 @@ export async function generateClientAiResponse(
         body: JSON.stringify({
           model,
           messages: fullMessages,
+          tools: OPENROUTER_TOOLS,
+          tool_choice: 'auto',
           stream: false,
         }),
         signal: controller.signal,
@@ -145,9 +315,45 @@ export async function generateClientAiResponse(
       }
 
       const json = await res.json()
-      const content = json?.choices?.[0]?.message?.content
-      if (content && typeof content === 'string' && content.trim().length > 0) {
-        return content.trim()
+      const choice = json?.choices?.[0]
+      const message = choice?.message
+
+      if (message) {
+        let content = (message.content || '').trim()
+
+        // Check if the model performed native tool calling
+        if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+          for (const tc of message.tool_calls) {
+            const action = convertToolCallToAction(tc)
+            if (action) {
+              dispatchChartAction(action)
+
+              if (action.type === 'log_trade' && action.tradeData) {
+                try {
+                  addJournalEntry({
+                    id: `trade_${Date.now()}`,
+                    timestamp: new Date().toISOString(),
+                    symbol: action.tradeData.symbol || 'BTCUSDT',
+                    direction: action.tradeData.type || 'LONG',
+                    entryPrice: action.tradeData.entryPrice || 0,
+                    stopLoss: action.tradeData.stopLoss,
+                    takeProfit: action.tradeData.takeProfit,
+                    pnlAmount: action.tradeData.pnlAmount || 0,
+                    outcome: action.tradeData.outcome || 'WIN',
+                    notes: action.tradeData.notes || 'Auto-logged by AI Tool Call',
+                  })
+                } catch {}
+              }
+
+              // Append formatted action block so UI creates interactive card
+              content += `\n\n\`\`\`chart-action\n${JSON.stringify(action, null, 2)}\n\`\`\``
+            }
+          }
+        }
+
+        if (content.length > 0) {
+          return content
+        }
       }
     } catch (err) {
       console.warn(`[OpenRouter] Failed with model ${model}:`, err)
