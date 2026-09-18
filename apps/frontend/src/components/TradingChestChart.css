@@ -24,7 +24,10 @@
   display: flex !important;
   flex-direction: column-reverse !important;
   z-index: 10 !important;
+  flex: 1 !important;
+  height: calc(100% - 38px) !important;
   min-height: 0 !important;
+  margin-top: 0 !important;
 }
 
 .klinecharts-pro-drawing-bar {
@@ -251,15 +254,22 @@
   pointer-events: none !important;
 }
 
-/* Top Tools Period Bar & Top Navigation Grey Borders & Hidden Scrollbar */
+/* Top Tools Period Bar & Top Navigation Grey Borders & Hidden Scrollbar (Fix C: Higher z-index, solid background & fixed height) */
 .klinecharts-pro-period-bar,
+.klinecharts-pro-toolbar,
 .klinecharts-pro-header,
 .klinecharts-pro-top-bar {
+  position: relative !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
+  background: #ffffff !important;
+  background-color: var(--klinecharts-pro-background-color, #ffffff) !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  flex-shrink: 0 !important;
   border: none !important;
-  border-bottom: none !important;
-  border-top: none !important;
-  border-left: none !important;
-  border-right: none !important;
+  border-bottom: 1px solid var(--klinecharts-pro-border-color, #ebedf1) !important;
   max-width: 100% !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
@@ -272,6 +282,20 @@
   -webkit-overflow-scrolling: touch !important;
 }
 
+.klinecharts-pro[data-theme="dark"] .klinecharts-pro-period-bar,
+[data-theme="dark"] .klinecharts-pro-period-bar {
+  background: #151517 !important;
+  background-color: var(--klinecharts-pro-background-color, #151517) !important;
+  border-bottom-color: var(--klinecharts-pro-border-color, #292929) !important;
+}
+
+.klinecharts-pro-period-bar *,
+.klinecharts-pro-toolbar *,
+.klinecharts-pro-header *,
+.klinecharts-pro-top-bar * {
+  pointer-events: auto !important;
+}
+
 .klinecharts-pro-period-bar::-webkit-scrollbar,
 .klinecharts-pro-header::-webkit-scrollbar,
 .klinecharts-pro-top-bar::-webkit-scrollbar {
@@ -280,9 +304,56 @@
   height: 0 !important;
 }
 
+/* Fix A & B: OHLC bar & legend elements placed below toolbar with pointer-events: none and solid background */
+.klinecharts-pro-ohlc,
+.klinecharts-pro-ohlc *,
+[class*="ohlc"],
+[class*="ohlc"] *,
+[class*="candle-info"],
+[class*="candle-info"] *,
+[class*="candle-legend"],
+[class*="candle-legend"] *,
+[class*="chart-legend"],
+[class*="chart-legend"] *,
+.klinecharts-pro-widget [class*="legend"],
+.klinecharts-pro-widget [class*="legend"] *,
+.klinecharts-pro-widget [class*="tooltip"],
+.klinecharts-pro-widget [class*="tooltip"] *,
+[class*="klinecharts"] [class*="legend"],
+[class*="klinecharts"] [class*="legend"] *,
+[class*="klinecharts"] [class*="tooltip"],
+[class*="klinecharts"] [class*="tooltip"] * {
+  pointer-events: none !important;
+}
+
+/* Position the OHLC bar inside the chart, at the top */
+.klinecharts-pro-ohlc,
+[class*="ohlc"] {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 20px !important;
+  padding: 2px 10px !important;
+  margin: 0 !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(4px) !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+  font-size: 11px !important;
+  line-height: 16px !important;
+  color: #64748b !important;
+}
+
+
+
+.klinecharts-pro-widget,
+.klinecharts-pro-content,
+.tradingchest-wrapper {
+  position: relative !important;
+}
+
 /* Ensure OHLCV legend data & indicator values stay on a single line, horizontally scrollable with hidden scrollbar on mobile */
-.klinecharts-pro-header,
-.klinecharts-pro-period-bar,
 .klinecharts-pro-widget [class*="legend"],
 .klinecharts-pro-widget [class*="tooltip"],
 [class*="klinecharts"] [class*="legend"],
@@ -593,7 +664,7 @@
   -webkit-appearance: none !important;
   appearance: none !important;
   background: transparent !important;
-  width: 110px !important;
+  width: 140px !important;
   height: 24px !important;
   accent-color: #2563eb !important;
   cursor: pointer !important;

@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { KLineChartPro } from 'trading-chest'
 import type { SymbolInfo, Period, Datafeed } from 'trading-chest'
-import { ActionType, TooltipShowRule, registerIndicator, registerOverlay, IndicatorSeries, LineType } from 'klinecharts'
+import { ActionType, TooltipShowRule, registerIndicator, IndicatorSeries, LineType } from 'klinecharts'
 import 'trading-chest/dist/trading-chest.css'
 import './TradingChestChart.css'
 import { registerPositionOverlays } from '../utils/positionOverlays'
+import { registerReplayMaskOverlay, REPLAY_MASK_OVERLAY_NAME, REPLAY_MASK_OVERLAY_ID } from '../utils/replayMaskOverlay'
 import { resolveSymbol, ALL_POPULAR_SYMBOLS } from '../utils/symbolResolver'
-import { fetchMultiAssetHistory } from '../utils/multiAssetDatafeed'
+import { loadCandles, saveCandles } from '../utils/candleDB'
 import { addJournalEntry } from '../utils/tradeJournalStore'
 
 registerPositionOverlays()
+registerReplayMaskOverlay()
 
 try {
   registerIndicator({
@@ -47,6 +49,30 @@ try {
 } catch (err) {
   console.warn('VOL register error:', err)
 }
+export function resolveToLseSymbol(ticker: string): string {
+  const clean = (ticker || 'BTCUSDT').trim().toUpperCase()
+  if (clean.includes('/')) return clean
+  if (clean.endsWith('USDT')) {
+    const base = clean.replace('USDT', '')
+    return `${base}/USD`
+  }
+  const fxPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'EURGBP', 'EURJPY', 'GBPJPY']
+  if (fxPairs.includes(clean)) {
+    return `${clean.slice(0, 3)}/${clean.slice(3)}`
+  }
+  if (clean === 'XAUUSD' || clean === 'GOLD') return 'XAU/USD'
+  if (clean === 'XAGUSD' || clean === 'SILVER') return 'XAG/USD'
+  return clean
+}
+
+export function periodToLseTimeframe(period: Period): string {
+  if (period.timespan === 'minute') return `${period.multiplier}m`
+  if (period.timespan === 'hour') return `${period.multiplier}h`
+  if (period.timespan === 'day') return '1d'
+  if (period.timespan === 'week') return '1w'
+  if (period.timespan === 'month') return '1mo'
+  return '1d'
+}
 
 const INITIAL_RESOLVED = resolveSymbol('BTCUSDT')
 const PERIOD: Period = {
@@ -69,6 +95,30 @@ function getDefaultSymbolPrice(ticker: string): number {
   return 100
 }
 
+const triggerSolidClick = (target: HTMLElement | Element | null, e?: Event) => {
+  let curr: any = target
+  while (curr && curr !== document && curr !== document.body) {
+    if (typeof curr.$$click === 'function') {
+      try {
+        curr.$$click(e || new MouseEvent('click', { bubbles: true, cancelable: true }))
+      } catch (err) {
+        console.error('$$click error:', err)
+      }
+      return true
+    }
+    if (typeof curr.$$input === 'function') {
+      try {
+        curr.$$input(e || new Event('input', { bubbles: true, cancelable: true }))
+      } catch (err) {
+        console.error('$$input error:', err)
+      }
+      return true
+    }
+    curr = curr.parentNode || curr.host
+  }
+  return false
+}
+
 interface TradingChestChartProps {
   onNavigateToJournal?: () => void
 }
@@ -84,14 +134,218 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   const [error, setError] = useState<string | null>(null)
   const [stockErrorMessage, setStockErrorMessage] = useState<string | null>(null)
 
+  // Custom Deterministic Replay State Machine
+  const [replayState, setReplayState] = useState<{
+    active: boolean
+    playing: boolean
+    position: number
+    speed: number
+    totalBars: number
+  }>({ active: false, playing: false, position: 0, speed: 1, totalBars: 0 })
 
+  const fullDataRef = useRef<any[]>([])
+  const originalDataRef = useRef<any[]>([])
+  const timerRef = useRef<number | null>(null)
+  const isReplayActiveRef = useRef(false)
+  const replayStateRef = useRef(replayState)
+  useEffect(() => {
+    replayStateRef.current = replayState
+    isReplayActiveRef.current = replayState.active
+  }, [replayState])
 
+  const updateMask = (position: number) => {
+    const chartWidget = (chartRef.current as any)?.getChart?.() || chartRef.current
+    if (!chartWidget) return
+    const candle = fullDataRef.current[position - 1]
+    if (!candle) return
+
+    const isAtEnd = position >= fullDataRef.current.length
+    const existing = chartWidget.getOverlayById?.(REPLAY_MASK_OVERLAY_ID)
+    if (existing) {
+      chartWidget.overrideOverlay({
+        id: REPLAY_MASK_OVERLAY_ID,
+        points: [{ timestamp: candle.timestamp, value: candle.close }],
+        extendData: { fromTimestamp: candle.timestamp, isAtEnd },
+      })
+    } else {
+      chartWidget.createOverlay({
+        name: REPLAY_MASK_OVERLAY_NAME,
+        id: REPLAY_MASK_OVERLAY_ID,
+        groupId: 'replay-mask-group',
+        points: [{ timestamp: candle.timestamp, value: candle.close }],
+        extendData: { fromTimestamp: candle.timestamp, isAtEnd },
+        lock: true,
+        visible: true,
+        zLevel: 1000,
+      })
+    }
+  }
+
+  const startOurReplay = () => {
+    const chartWidget = (chartRef.current as any)?.getChart?.() || chartRef.current
+    if (!chartWidget) return
+
+    // Stop and kill any library internal ReplayEngine
+    const libEngine = (chartWidget as any)?.getReplayEngine?.() || (chartRef.current as any)?.getReplayEngine?.()
+    if (libEngine) {
+      if (typeof libEngine.stop === 'function') libEngine.stop()
+      else if (typeof libEngine.pause === 'function') libEngine.pause()
+    }
+
+    // Use the ORIGINAL full data
+    let fullData = originalDataRef.current
+    if (!fullData || fullData.length < 50) {
+      // Fallback: if original hasn't been set, use current data
+      fullData = chartWidget.getDataList()
+      if (!fullData || fullData.length < 50) return
+      originalDataRef.current = fullData.slice()
+    }
+
+    fullDataRef.current = fullData.slice()
+
+    // KEY ARCHITECTURE: Load FULL data into chart (no slice)
+    // The chart keeps the exact current date at the right edge!
+    isReplayActiveRef.current = true
+    chartWidget.applyNewData(fullData, true)
+    if (typeof (chartWidget as any).setOffsetRightDistance === 'function') {
+      (chartWidget as any).setOffsetRightDistance(20)
+    }
+    if (typeof (chartWidget as any).scrollToRealTime === 'function') {
+      (chartWidget as any).scrollToRealTime(0)
+    }
+
+    // Remove any stale mask overlays
+    try {
+      chartWidget.removeOverlay({ name: REPLAY_MASK_OVERLAY_NAME })
+      chartWidget.removeOverlay(REPLAY_MASK_OVERLAY_ID)
+    } catch {}
+
+    // Option A: Start cursor at the very end ("now")
+    const initPos = fullData.length
+    const cursorCandle = fullData[initPos - 1]
+
+    if (cursorCandle) {
+      chartWidget.createOverlay({
+        name: REPLAY_MASK_OVERLAY_NAME,
+        id: REPLAY_MASK_OVERLAY_ID,
+        groupId: 'replay-mask-group',
+        points: [{ timestamp: cursorCandle.timestamp, value: cursorCandle.close }],
+        extendData: { fromTimestamp: cursorCandle.timestamp, isAtEnd: true },
+        lock: true,
+        visible: true,
+        zLevel: 1000,
+      })
+    }
+
+    setReplayState({
+      active: true,
+      playing: false,
+      position: initPos,
+      speed: 1,
+      totalBars: fullData.length,
+    })
+  }
+
+  const playReplay = () => {
+    setReplayState(prev => {
+      if (!prev.active || prev.playing) return prev
+      if (prev.position >= prev.totalBars) {
+        return prev // Cannot advance beyond end; user must drag slider back first
+      }
+      return { ...prev, playing: true }
+    })
+  }
+
+  const pauseReplay = () => {
+    setReplayState(prev => {
+      if (!prev.playing) return prev
+      return { ...prev, playing: false }
+    })
+  }
+
+  const stopReplay = () => {
+    isReplayActiveRef.current = false
+    const chartWidget = (chartRef.current as any)?.getChart?.() || chartRef.current
+    const libEngine = (chartWidget as any)?.getReplayEngine?.() || (chartRef.current as any)?.getReplayEngine?.()
+    if (libEngine && typeof libEngine.stop === 'function') {
+      libEngine.stop()
+    }
+
+    // Clean up mask overlay on exit
+    if (chartWidget) {
+      try {
+        chartWidget.removeOverlay({ name: REPLAY_MASK_OVERLAY_NAME })
+        chartWidget.removeOverlay(REPLAY_MASK_OVERLAY_ID)
+      } catch {}
+    }
+
+    const full = originalDataRef.current.length > 0 ? originalDataRef.current : fullDataRef.current
+    setReplayState({ active: false, playing: false, position: 0, speed: 1, totalBars: 0 })
+    fullDataRef.current = []
+    if (chartWidget && full.length > 0) {
+      chartWidget.applyNewData(full, true)
+      if (typeof (chartWidget as any).scrollToRealTime === 'function') {
+        (chartWidget as any).scrollToRealTime(0)
+      }
+    }
+  }
+
+  const stepForward = () => {
+    const state = replayStateRef.current
+    if (!state.active) return
+    const next = state.position + 1
+    if (next > state.totalBars) return
+    setReplayState(prev => ({ ...prev, position: next }))
+    updateMask(next)
+  }
+
+  const stepBackward = () => {
+    const state = replayStateRef.current
+    if (!state.active) return
+    const prev = state.position - 1
+    if (prev < 1) return
+    setReplayState(s => ({ ...s, position: prev }))
+    updateMask(prev)
+  }
+
+  const setReplaySpeed = (speed: number) => {
+    setReplayState(prev => ({ ...prev, speed }))
+  }
+
+  const goToPosition = (pos: number) => {
+    const clamped = Math.max(1, Math.min(pos, replayStateRef.current.totalBars))
+    setReplayState(s => ({ ...s, position: clamped }))
+    updateMask(clamped)
+  }
+
+  // The replay tick loop: updates cursor and mask position only (0 chart data rebuilds)
+  useEffect(() => {
+    if (!replayState.active || !replayState.playing) return
+
+    const tickMs = Math.max(100, Math.floor(1000 / replayState.speed))
+    const timer = window.setInterval(() => {
+      const state = replayStateRef.current
+      if (!state.playing || !state.active) return
+
+      const next = state.position + 1
+      if (next > state.totalBars) {
+        pauseReplay()
+        return
+      }
+
+      setReplayState(prev => ({ ...prev, position: next }))
+      updateMask(next)
+    }, tickMs)
+
+    return () => clearInterval(timer)
+  }, [replayState.active, replayState.playing, replayState.speed])
 
 
   // Symbol & Replay State
   const [currentSymbolTicker, setCurrentSymbolTicker] = useState('BTCUSDT')
-  const [showToast, setShowToast] = useState<string | null>(null)
-
+  const currentSymbolTickerRef = useRef('BTCUSDT')
+  currentSymbolTickerRef.current = currentSymbolTicker
+  const currentPeriodRef = useRef<Period>(PERIOD)
   // Interactive Order Execution Panel State
   const [showOrderPanel, setShowOrderPanel] = useState(false)
   const [tradeDirection, setTradeDirection] = useState<'LONG' | 'SHORT'>('LONG')
@@ -128,16 +382,43 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       setError(null)
       setStockErrorMessage(null)
 
-      const resolved = resolveSymbol(symbol?.ticker || 'BTCUSDT')
-      setCurrentSymbolTicker(resolved.symbolInfo.ticker)
+      const ticker = symbol?.ticker || 'BTCUSDT'
+      const lseSymbol = resolveToLseSymbol(ticker)
+      const timeframe = periodToLseTimeframe(period)
+      setCurrentSymbolTicker(ticker)
+      currentPeriodRef.current = period
 
       try {
-        const res = await fetchMultiAssetHistory(resolved, period)
-        if (res.isStockError) {
-          setStockErrorMessage(res.stockErrorMessage || 'Stock data unavailable — free tier limit reached or symbol not covered')
+        // Check IndexedDB first
+        const cached = await loadCandles(lseSymbol, timeframe)
+        if (cached && cached.candles && cached.candles.length >= 200) {
+          originalDataRef.current = cached.candles.slice()
+          return cached.candles
         }
-        return res.candles
-      } catch (err) {
+
+        // Cache miss — call backend proxy
+        const url = `/api/candles?symbol=${encodeURIComponent(lseSymbol)}&timeframe=${timeframe}&limit=2000&order=desc`
+        const res = await fetch(url)
+        if (!res.ok) {
+          throw new Error(`Failed to fetch candles: ${res.statusText}`)
+        }
+        const json = await res.json()
+        const candles = (json.candles || []).map((c: any) => ({
+          timestamp: typeof c.timestamp === 'number' ? c.timestamp : new Date(c.timestamp).getTime(),
+          open: parseFloat(c.open),
+          high: parseFloat(c.high),
+          low: parseFloat(c.low),
+          close: parseFloat(c.close),
+          volume: parseFloat(c.volume || 0),
+        })).sort((a: any, b: any) => a.timestamp - b.timestamp)
+
+        if (candles.length > 0) {
+          await saveCandles(lseSymbol, timeframe, candles, true)
+          originalDataRef.current = candles.slice()
+        }
+
+        return candles
+      } catch (err: any) {
         console.error('getHistoryKLineData error:', err)
         setError('Failed loading chart data')
         return []
@@ -146,61 +427,13 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       }
     },
 
-    subscribe: (symbol: SymbolInfo, _period: Period, callback: (data: any) => void) => {
-      if (activeWsRef.current) {
-        activeWsRef.current.close()
-        activeWsRef.current = null
-      }
-      if (liveTimerRef.current) {
-        clearInterval(liveTimerRef.current)
-        liveTimerRef.current = null
-      }
-
-      const resolved = resolveSymbol(symbol?.ticker || 'BTCUSDT')
-      setCurrentSymbolTicker(resolved.symbolInfo.ticker)
-
-      if (resolved.assetClass === 'crypto') {
-        const ticker = resolved.normalizedSymbol.toLowerCase()
-        try {
-          const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${ticker}@kline_1d`)
-          ws.onmessage = (event) => {
-            try {
-              const msg = JSON.parse(event.data)
-              if (msg && msg.k) {
-                const k = msg.k
-                const closeP = parseFloat(k.c)
-                if (!isNaN(closeP)) {
-                  setEntryPrice((prev) => (Math.abs(prev - closeP) > closeP * 0.1 ? closeP : prev))
-                }
-                callback({
-                  timestamp: Number(k.t),
-                  open: parseFloat(k.o),
-                  high: parseFloat(k.h),
-                  low: parseFloat(k.l),
-                  close: closeP,
-                  volume: parseFloat(k.v),
-                })
-              }
-            } catch (err) {
-              console.error('WS parse error:', err)
-            }
-          }
-          activeWsRef.current = ws
-        } catch (err) {
-          console.warn('WS connect error:', err)
-        }
-      }
+    subscribe: (_symbol: SymbolInfo, _period: Period, _callback: (data: any) => void) => {
+      // Live WebSocket data has been removed in favor of on-demand historical downloader.
+      // Do nothing here. Replay mode handles data iteration internally.
     },
 
     unsubscribe: (_symbol: SymbolInfo, _period: Period) => {
-      if (activeWsRef.current) {
-        activeWsRef.current.close()
-        activeWsRef.current = null
-      }
-      if (liveTimerRef.current) {
-        clearInterval(liveTimerRef.current)
-        liveTimerRef.current = null
-      }
+      // No active subscriptions.
     },
   }), [])
 
@@ -218,52 +451,124 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       mainIndicators: [],
       subIndicators: [],
       datafeed,
+      styles: {
+        candle: {
+          tooltip: {
+            showRule: TooltipShowRule.Always,
+          },
+        },
+        indicator: {
+          tooltip: {
+            showRule: TooltipShowRule.Always,
+          },
+        },
+      },
     })
 
-
-
     const chartWidget = chart.getChart()
+
     if (chartWidget) {
-      chartWidget.subscribeAction(ActionType.OnCrosshairChange, () => {})
+      if (typeof (chartWidget as any).setOffsetRightDistance === 'function') {
+        (chartWidget as any).setOffsetRightDistance(20)
+      }
+
+      chartWidget.subscribeAction(ActionType.OnDataReady, () => {
+        if (isReplayActiveRef.current) return
+        const data = chartWidget.getDataList()
+        if (data && data.length > originalDataRef.current.length) {
+          originalDataRef.current = data.slice()
+        }
+      })
+
+      chartWidget.setLoadDataCallback(async (params) => {
+        const { type, data, callback } = params
+
+        // Prevent data pagination / cascades during replay
+        if (isReplayActiveRef.current) {
+          callback([], false)
+          return
+        }
+
+        if (!data && type !== 'init') {
+          callback([], false)
+          return
+        }
+
+        const symbol = resolveToLseSymbol(currentSymbolTickerRef.current)
+        const timeframe = periodToLseTimeframe(currentPeriodRef.current)
+        const timestampIso = data?.timestamp ? new Date(data.timestamp).toISOString() : ''
+
+        // For init/forward: check IndexedDB first
+        if (type === 'init' || type === 'forward') {
+          const cached = await loadCandles(symbol, timeframe)
+          if (cached && cached.candles && cached.candles.length > 0) {
+            // Filter cached candles by timestamp if forward
+            let filtered = cached.candles
+            if (type === 'forward' && data) {
+              filtered = cached.candles.filter(c => c.timestamp < data.timestamp)
+            }
+            if (filtered.length >= 200) {
+              callback(filtered.slice(-1000), filtered.length > 1000)
+              return
+            }
+          }
+        }
+
+        // Cache miss — call backend
+        let url = `/api/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`
+        if (type === 'init') url += `&limit=2000&order=desc`
+        else if (type === 'forward') url += `&end=${encodeURIComponent(timestampIso)}&limit=1000&order=desc`
+        else if (type === 'backward') url += `&start=${encodeURIComponent(timestampIso)}&limit=1000&order=asc`
+
+        try {
+          const res = await fetch(url)
+          if (!res.ok) {
+            callback([], false)
+            return
+          }
+          const json = await res.json()
+          const candles = (json.candles || []).map((c: any) => ({
+            timestamp: typeof c.timestamp === 'number' ? c.timestamp : new Date(c.timestamp).getTime(),
+            open: parseFloat(c.open),
+            high: parseFloat(c.high),
+            low: parseFloat(c.low),
+            close: parseFloat(c.close),
+            volume: parseFloat(c.volume || 0),
+          })).sort((a: any, b: any) => a.timestamp - b.timestamp)
+
+          // Save to IndexedDB (merge with existing if forward/backward)
+          if (type === 'init') {
+            await saveCandles(symbol, timeframe, candles, true)
+          } else {
+            const existing = await loadCandles(symbol, timeframe)
+            if (existing) {
+              const merged = [...candles, ...existing.candles]
+                .sort((a, b) => a.timestamp - b.timestamp)
+                .filter((c, i, arr) => i === 0 || c.timestamp !== arr[i - 1].timestamp)
+              await saveCandles(symbol, timeframe, merged, true)
+            } else {
+              await saveCandles(symbol, timeframe, candles, true)
+            }
+          }
+
+          callback(candles, candles.length >= 1000)
+        } catch (err) {
+          console.error('setLoadDataCallback fetch error:', err)
+          callback([], false)
+        }
+      })
       ;(chartWidget as any).setStyles({
         tooltip: {
-          showRule: TooltipShowRule.None,
+          showRule: TooltipShowRule.Always,
         },
         candle: {
           tooltip: {
             showRule: TooltipShowRule.Always,
-            showType: 'standard',
-            text: {
-              size: 10,
-              marginLeft: 4,
-              marginRight: 4,
-              marginTop: 4,
-              marginBottom: 4,
-            },
-            custom: (data: any) => {
-              const kLineData = data?.current?.kLineData || data?.current || data
-              if (!kLineData || !kLineData.timestamp) return []
-              const d = new Date(kLineData.timestamp)
-              const yr = d.getFullYear()
-              const mo = String(d.getMonth() + 1).padStart(2, '0')
-              const da = String(d.getDate()).padStart(2, '0')
-              const dateStr = `${yr}-${mo}-${da}`
-
-              const fmt = (v: any) => {
-                if (typeof v !== 'number' || isNaN(v)) return '0'
-                if (v >= 1000) return v.toLocaleString('en-US', { maximumFractionDigits: 2 })
-                return v.toFixed(2)
-              }
-
-              return [
-                { title: 'time', value: dateStr },
-                { title: 'open', value: fmt(kLineData.open) },
-                { title: 'high', value: fmt(kLineData.high) },
-                { title: 'low', value: fmt(kLineData.low) },
-                { title: 'close', value: fmt(kLineData.close) },
-                { title: 'volume', value: fmt(kLineData.volume) },
-              ]
-            },
+          },
+        },
+        indicator: {
+          tooltip: {
+            showRule: TooltipShowRule.Always,
           },
         },
         yAxis: {
@@ -296,13 +601,25 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     const containerEl = containerRef.current
     let resizeObserver: ResizeObserver | null = null
 
+    const handleResize = () => {
+      const chartWidget = (chartRef.current as any)?.getChart?.() || chartRef.current
+      if (!chartWidget) return
+
+      if (typeof chartWidget.resize === 'function') {
+        chartWidget.resize()
+      }
+    }
+    window.addEventListener('resize', handleResize)
+
     if (containerEl) {
       resizeObserver = new ResizeObserver(() => {
-        if (typeof (chart as any).resize === 'function') {
-          (chart as any).resize()
-        }
+        handleResize()
       })
       resizeObserver.observe(containerEl)
+      const widgetEl = containerEl.querySelector('.klinecharts-pro-widget')
+      if (widgetEl) {
+        resizeObserver.observe(widgetEl)
+      }
     }
 
     const handleUpdateDropdownPositions = () => {
@@ -320,30 +637,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       })
     }
 
-    const triggerSolidClick = (target: HTMLElement | Element | null, e?: Event) => {
-      let curr: any = target
-      while (curr && curr !== document && curr !== document.body) {
-        if (typeof curr.$$click === 'function') {
-          try {
-            curr.$$click(e || new MouseEvent('click', { bubbles: true, cancelable: true }))
-          } catch (err) {
-            console.error('$$click error:', err)
-          }
-          return true
-        }
-        if (typeof curr.$$input === 'function') {
-          try {
-            curr.$$input(e || new Event('input', { bubbles: true, cancelable: true }))
-          } catch (err) {
-            console.error('$$input error:', err)
-          }
-          return true
-        }
-        curr = curr.parentNode || curr.host
-      }
-      return false
-    }
-
     let lastToolTapTime = 0
 
     const onClick = (e: Event) => {
@@ -354,11 +647,25 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       }
       const now = Date.now()
 
-      const isReplayBarClick = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') !== null
-      if (!isReplayBarClick) {
-        if (now - lastToolTapTime < 300) {
+      const isReplayTriggerBtn = target.closest('.replay-trigger-btn') !== null || (target.closest('.item.tools') && target.textContent?.toLowerCase().includes('replay'))
+      if (isReplayTriggerBtn) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (replayStateRef.current.active) {
+          // Already in replay, don't restart
           return
         }
+        startOurReplay()
+        return
+      }
+
+      const isReplayBarClick = target.closest('.klinecharts-pro-replay-bar, .replay-top-bar') !== null
+      if (isReplayBarClick) {
+        return
+      }
+
+      if (now - lastToolTapTime < 300) {
+        return
       }
 
       // 1. Delete overlay on Trash icon tap/click
@@ -459,7 +766,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         if (!isAlreadySelected) {
           const arrow = itemEl.querySelector('.icon-arrow') as HTMLElement
           if (arrow) {
-            // Need a slight delay on mobile so the library processes the selection first
             setTimeout(() => {
               arrow.dispatchEvent(new MouseEvent('click', { 
                 bubbles: true, cancelable: true, view: window 
@@ -486,7 +792,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
 
     if (containerEl) {
-      containerEl.addEventListener('click', onClick)
+      containerEl.addEventListener('click', onClick, { capture: true })
       containerEl.addEventListener('input', onInput, { capture: true, passive: true })
       containerEl.addEventListener('touchend', onDrawingBarTouchEnd, { passive: true })
       containerEl.addEventListener('scroll', onScroll, { capture: true, passive: true })
@@ -494,7 +800,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
 
     return () => {
       if (containerEl) {
-        containerEl.removeEventListener('click', onClick)
+        containerEl.removeEventListener('click', onClick, { capture: true } as any)
         containerEl.removeEventListener('touchend', onDrawingBarTouchEnd)
         containerEl.removeEventListener('scroll', onScroll, { capture: true } as any)
       }
@@ -510,6 +816,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         clearInterval(replayIntervalRef.current)
         replayIntervalRef.current = null
       }
+      window.removeEventListener('resize', handleResize)
       if (resizeObserver) {
         resizeObserver.disconnect()
       }
@@ -536,16 +843,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       const isInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range'
       const buttonTarget = target.closest('button, .replay-btn, .replay-speed, .replay-exit, .replay-action-btn, [role="button"]')
 
-      if (buttonTarget) {
-        const handled = triggerSolidClick(target, e)
-        if (!handled && typeof (target as any).click === 'function') {
-          (target as any).click()
-        }
-        return
-      }
-
-      if (isInput) {
-        triggerSolidClick(target, e)
+      if (buttonTarget || isInput) {
         return
       }
 
@@ -619,8 +917,8 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
       window.addEventListener('mousemove', handlePointerMove, { passive: false, capture: true })
       window.addEventListener('mouseup', handlePointerUp, { capture: true })
       window.addEventListener('touchmove', handlePointerMove, { passive: false, capture: true })
-      window.addEventListener('touchend', handlePointerUp, { passive: false, capture: true })
-      window.addEventListener('touchcancel', handlePointerUp, { passive: false, capture: true })
+      window.addEventListener('touchend', handlePointerUp, { capture: true })
+      window.addEventListener('touchcancel', handlePointerUp, { capture: true })
     }
 
     document.addEventListener('mousedown', handlePointerDown)
@@ -640,7 +938,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     let activeTouchId: number | null = null
     let isSeparatorTouch = false
 
-    const createMouseEvent = (type: string, touch: Touch, target: Element) => {
+    const createMouseEvent = (type: string, touch: Touch, _target: Element) => {
       return new MouseEvent(type, {
         bubbles: true,
         cancelable: true,
@@ -734,7 +1032,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
   }, [])
 
   // Universal Mobile Touch-to-Mouse Proxy for All Chart Canvas Interactions
-  // (Chart Panning, Drawing Overlay Handles, Axis Resizing, Shapes & Control Points)
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -745,7 +1042,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     let touchStartX = 0
     let touchStartY = 0
 
-    const createMouseEvent = (type: string, touch: Touch, target: Element) => {
+    const createMouseEvent = (type: string, touch: Touch, _target: Element) => {
       return new MouseEvent(type, {
         bubbles: true,
         cancelable: true,
@@ -899,7 +1196,7 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
   }
 
-  // Draggable Logo Button Position inside chart area (Supports Mouse & Mobile Touch)
+  // Draggable Logo Button Position inside chart area
   const [logoPos, setLogoPos] = useState({ x: 70, y: 56 })
   const [isDragging, setIsDragging] = useState(false)
   const dragStartRef = useRef<{ mouseX: number; mouseY: number; initialX: number; initialY: number } | null>(null)
@@ -966,6 +1263,114 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
   }, [])
 
+  // Replay Slider 0.5x Speed Drag Handler for Smooth Chart Movement
+  const sliderDragRef = useRef<{
+    active: boolean
+    startX: number
+    startPos: number
+    trackWidth: number
+    hasMoved: boolean
+  } | null>(null)
+
+  const handleSliderPointerDown = (e: React.PointerEvent<HTMLInputElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    sliderDragRef.current = {
+      active: true,
+      startX: e.clientX,
+      startPos: replayStateRef.current.position,
+      trackWidth: rect.width > 0 ? rect.width : 110,
+      hasMoved: false,
+    }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
+  }
+
+  const handleSliderPointerMove = (e: React.PointerEvent<HTMLInputElement>) => {
+    if (!sliderDragRef.current || !sliderDragRef.current.active) return
+    const { startX, startPos, trackWidth } = sliderDragRef.current
+    const deltaX = e.clientX - startX
+
+    if (Math.abs(deltaX) > 2) {
+      sliderDragRef.current.hasMoved = true
+    }
+    if (!sliderDragRef.current.hasMoved) return
+
+    const totalBars = replayStateRef.current.totalBars || 100
+    // Default 0.5x speed effect on chart movement when moving the slider
+    const sliderSpeed = 0.5
+    const deltaBars = (deltaX / trackWidth) * totalBars * sliderSpeed
+    const newPos = Math.max(1, Math.min(totalBars, Math.round(startPos + deltaBars)))
+    goToPosition(newPos)
+  }
+
+  const handleSliderPointerUp = (e: React.PointerEvent<HTMLInputElement>) => {
+    if (sliderDragRef.current) {
+      if (!sliderDragRef.current.hasMoved) {
+        // Direct click/tap on track without drag: advance with 0.5x damping towards click target
+        const rect = e.currentTarget.getBoundingClientRect()
+        const totalBars = replayStateRef.current.totalBars || 100
+        const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+        const clickedPos = Math.round(1 + clickRatio * (totalBars - 1))
+        const currentPos = replayStateRef.current.position
+        const dampenedPos = Math.round(currentPos + (clickedPos - currentPos) * 0.5)
+        goToPosition(dampenedPos)
+      }
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      } catch {}
+    }
+    sliderDragRef.current = null
+  }
+
+  const handleSliderTouchStart = (e: React.TouchEvent<HTMLInputElement>) => {
+    if (e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const rect = e.currentTarget.getBoundingClientRect()
+    sliderDragRef.current = {
+      active: true,
+      startX: touch.clientX,
+      startPos: replayStateRef.current.position,
+      trackWidth: rect.width > 0 ? rect.width : 110,
+      hasMoved: false,
+    }
+  }
+
+  const handleSliderTouchMove = (e: React.TouchEvent<HTMLInputElement>) => {
+    if (!sliderDragRef.current || !sliderDragRef.current.active) return
+    const touch = e.touches[0]
+    if (!touch) return
+    const { startX, startPos, trackWidth } = sliderDragRef.current
+    const deltaX = touch.clientX - startX
+
+    if (Math.abs(deltaX) > 2) {
+      sliderDragRef.current.hasMoved = true
+    }
+    if (!sliderDragRef.current.hasMoved) return
+
+    const totalBars = replayStateRef.current.totalBars || 100
+    const sliderSpeed = 0.5
+    const deltaBars = (deltaX / trackWidth) * totalBars * sliderSpeed
+    const newPos = Math.max(1, Math.min(totalBars, Math.round(startPos + deltaBars)))
+    goToPosition(newPos)
+  }
+
+  const handleSliderTouchEnd = (e: React.TouchEvent<HTMLInputElement>) => {
+    if (sliderDragRef.current) {
+      if (!sliderDragRef.current.hasMoved && e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0]
+        const rect = e.currentTarget.getBoundingClientRect()
+        const totalBars = replayStateRef.current.totalBars || 100
+        const clickRatio = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width))
+        const clickedPos = Math.round(1 + clickRatio * (totalBars - 1))
+        const currentPos = replayStateRef.current.position
+        const dampenedPos = Math.round(currentPos + (clickedPos - currentPos) * 0.5)
+        goToPosition(dampenedPos)
+      }
+    }
+    sliderDragRef.current = null
+  }
+
   const handleLogoClick = (e: React.MouseEvent | React.TouchEvent) => {
     if (hasDraggedRef.current) {
       e.preventDefault()
@@ -974,8 +1379,6 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
     }
     setShowOrderPanel(!showOrderPanel)
   }
-
-
 
   return (
     <div className="tradingchest-wrapper">
@@ -996,9 +1399,132 @@ function TradingChestChart({ onNavigateToJournal }: TradingChestChartProps) {
         <img src="/Logo.jpeg" alt="Logo" className="rounded-logo-img" draggable={false} />
       </button>
 
-      {stockErrorMessage && (
+      {stockErrorMessage && !replayState.active && (
         <div className="stock-error-banner">
           ⚠️ {stockErrorMessage}
+        </div>
+      )}
+
+      {/* Deterministic Replay Console UI */}
+      {replayState.active && (
+        <div className="klinecharts-pro-replay-bar replay-top-bar">
+          <div
+            className="replay-btn"
+            title="Step Back"
+            onClick={(e) => {
+              e.stopPropagation()
+              stepBackward()
+            }}
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" transform="scale(-1,1) translate(-24,0)" fill="currentColor"></path>
+            </svg>
+          </div>
+
+          <div
+            className={`replay-btn ${replayState.position >= replayState.totalBars && !replayState.playing ? 'disabled' : ''}`}
+            title={
+              replayState.playing
+                ? 'Pause'
+                : replayState.position >= replayState.totalBars
+                ? 'Drag slider back to set a start position, then press play'
+                : 'Play'
+            }
+            style={{
+              opacity: replayState.position >= replayState.totalBars && !replayState.playing ? 0.45 : 1,
+              cursor: replayState.position >= replayState.totalBars && !replayState.playing ? 'not-allowed' : 'pointer',
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (replayState.playing) pauseReplay()
+              else playReplay()
+            }}
+          >
+            {replayState.playing ? (
+              <svg viewBox="0 0 24 24">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"></path>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" fill="currentColor"></path>
+              </svg>
+            )}
+          </div>
+
+          <div
+            className="replay-btn"
+            title="Step Forward"
+            onClick={(e) => {
+              e.stopPropagation()
+              stepForward()
+            }}
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"></path>
+            </svg>
+          </div>
+
+          <span
+            className="replay-speed"
+            title="Replay Speed"
+            onClick={(e) => {
+              e.stopPropagation()
+              const speeds = [1, 2, 4]
+              const idx = speeds.indexOf(replayState.speed)
+              const next = speeds[(idx + 1) % speeds.length]
+              setReplaySpeed(next)
+            }}
+          >
+            {replayState.speed}x
+          </span>
+
+          <div className="replay-progress">
+            <span>{replayState.position}</span>
+            <input
+              type="range"
+              min={1}
+              max={replayState.totalBars || 100}
+              value={replayState.position}
+              onPointerDown={handleSliderPointerDown}
+              onPointerMove={handleSliderPointerMove}
+              onPointerUp={handleSliderPointerUp}
+              onPointerCancel={handleSliderPointerUp}
+              onTouchStart={handleSliderTouchStart}
+              onTouchMove={handleSliderTouchMove}
+              onTouchEnd={handleSliderTouchEnd}
+              onTouchCancel={handleSliderTouchEnd}
+              onChange={(e) => {
+                if (sliderDragRef.current?.active) return
+                const val = parseInt(e.target.value, 10)
+                if (!isNaN(val)) goToPosition(val)
+              }}
+            />
+            <span>{replayState.totalBars}</span>
+            {replayState.position >= replayState.totalBars && !replayState.playing && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: '#94a3b8',
+                  marginLeft: '8px',
+                  whiteSpace: 'nowrap',
+                  userSelect: 'none',
+                }}
+              >
+                (drag back to start)
+              </span>
+            )}
+          </div>
+
+          <span
+            className="replay-exit"
+            title="Exit Replay"
+            onClick={(e) => {
+              e.stopPropagation()
+              stopReplay()
+            }}
+          >
+            Exit
+          </span>
         </div>
       )}
 
