@@ -16,9 +16,10 @@ export type NavPage = 'chart' | 'journal' | 'analytics' | 'aichat'
 interface SidebarProps {
   activePage: NavPage
   onSelectPage: (page: NavPage) => void
+  collapsed?: boolean
 }
 
-export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
+export function Sidebar({ activePage, onSelectPage, collapsed = false }: SidebarProps) {
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [activeThreadId, setActiveId] = useState<string>('')
 
@@ -50,7 +51,7 @@ export function Sidebar({ activePage, onSelectPage }: SidebarProps) {
   }
 
   return (
-    <aside className="shadcn-sidebar">
+    <aside className={`shadcn-sidebar${collapsed ? ' collapsed' : ''}`}>
       {/* Sidebar Header with Logo */}
       <div className="sidebar-header">
         <div className="sidebar-brand">

@@ -45,6 +45,36 @@
   width: var(--sidebar-width-collapsed);
 }
 
+.shadcn-sidebar.collapsed .sidebar-brand-title,
+.shadcn-sidebar.collapsed .sidebar-group-label,
+.shadcn-sidebar.collapsed .menu-text,
+.shadcn-sidebar.collapsed .sidebar-group-header,
+.shadcn-sidebar.collapsed .sidebar-add-chat-btn,
+.shadcn-sidebar.collapsed .chat-history-section,
+.shadcn-sidebar.collapsed .user-info {
+  display: none !important;
+}
+
+.shadcn-sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 0;
+}
+
+.shadcn-sidebar.collapsed .sidebar-menu-button {
+  justify-content: center;
+  padding: 0;
+}
+
+.shadcn-sidebar.collapsed .sidebar-menu-item {
+  display: flex;
+  justify-content: center;
+}
+
+.shadcn-sidebar.collapsed .user-profile-card {
+  justify-content: center;
+  padding: 0;
+}
+
 /* Sidebar Header */
 .sidebar-header {
   height: 52px;

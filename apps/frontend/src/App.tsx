@@ -4,7 +4,7 @@ import TradingChestChart from './components/TradingChestChart'
 import { JournalPage } from './components/JournalPage'
 import { AnalyticsPage } from './components/AnalyticsPage'
 import { AIChatPage } from './components/AIChatPage'
-import { PlusIcon } from './components/ShadcnIcons'
+import { PlusIcon, PanelLeftIcon } from './components/ShadcnIcons'
 import { MobileBottomNav } from './components/MobileBottomNav'
 import {
   getChatThreads,
@@ -21,6 +21,7 @@ function App() {
   const [activePage, setActivePage] = useState<NavPage>('chart')
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [activeThreadId, setActiveThreadId] = useState<string>('')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const syncChatData = () => {
     setThreads(getChatThreads())
@@ -52,17 +53,33 @@ function App() {
     setActivePage(page)
   }
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => !prev)
+  }
+
   return (
     <div className="app-root">
       <div className="app-workspace">
         {/* Desktop Sidebar Navigation */}
-        <Sidebar activePage={activePage} onSelectPage={handleSelectPage} />
+        <Sidebar activePage={activePage} onSelectPage={handleSelectPage} collapsed={sidebarCollapsed} />
 
         {/* Main Page Area */}
         <main className="app-content">
           {/* Top Header Bar inside the page area (Always visible across all pages) */}
           <header className="page-top-header">
             <div className="top-header-left">
+              {/* Sidebar toggle button - desktop only */}
+              <button 
+                className="header-sidebar-toggle-btn" 
+                onClick={toggleSidebar} 
+                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <PanelLeftIcon width="20" height="20" />
+              </button>
+
+              <div className="header-divider" />
+
               {/* Visible on Mobile View (since Sidebar is hidden on mobile) */}
               <div className="mobile-header-brand">
                 <img src="/Logo.jpeg" alt="Logo" className="mobile-header-logo" />
