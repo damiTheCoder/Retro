@@ -33,16 +33,13 @@ export default async function handler(req: any, res: any) {
         : [{ role: 'user', content: userText }]
 
     const candidateModels = [
+      'nex-agi/nex-n2.5-pro',
+      'nex-agi/nex-n2.5-pro:free',
+      'nex-agi/nex-n2.5-mini',
       'meta-llama/llama-3.3-70b-instruct',
       'deepseek/deepseek-chat',
       'qwen/qwen-2.5-72b-instruct',
-      'mistralai/mistral-large-2411',
       'google/gemini-2.0-flash-001',
-      'google/gemini-2.0-flash-lite-preview-02-05:free',
-      'meta-llama/llama-3.1-8b-instruct:free',
-      'deepseek/deepseek-v4-flash-0731:free',
-      'qwen/qwen3.8-27b:free',
-      'inclusionai/ling-3.0-flash-fin:free',
     ]
 
     const tools = [

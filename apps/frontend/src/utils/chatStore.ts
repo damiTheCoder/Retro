@@ -17,9 +17,10 @@ const STORAGE_KEY_ACTIVE_ID = 'retro_chat_active_id_v1'
 const STORAGE_KEY_MODEL = 'retro_chat_model_v1'
 
 export const AI_MODEL_OPTIONS = [
-  'GPT-4o',
-  'Claude 3.5',
-  'DeepSeek R1',
+  'Nex 2.5 Pro',
+  'DeepSeek V4 Flash',
+  'Qwen 2.5 72B',
+  'Llama 3.3 70B',
 ]
 
 export function getSelectedModel(): string {
