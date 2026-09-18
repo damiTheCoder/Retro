@@ -113,14 +113,6 @@ export function AIChatPage() {
   const [activePageContext, setActivePageContext] = useState<string>('aichat')
   const [isThinking, setIsThinking] = useState<boolean>(false)
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null)
-  const [showKeyModal, setShowKeyModal] = useState<boolean>(false)
-  const [customKeyInput, setCustomKeyInput] = useState<string>('')
-  const [hasSavedKey, setHasSavedKey] = useState<boolean>(() => {
-    return Boolean(
-      (typeof window !== 'undefined' && localStorage.getItem('openrouter_api_key')) ||
-      (import.meta.env?.VITE_OPENROUTER_API_KEY as string)
-    )
-  })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -128,19 +120,6 @@ export function AIChatPage() {
     setThreads(getChatThreads())
     setActiveId(getActiveThreadId())
     setModel(getSelectedModel())
-  }
-
-  const handleSaveApiKey = () => {
-    const trimmed = customKeyInput.trim()
-    if (trimmed) {
-      localStorage.setItem('openrouter_api_key', trimmed)
-      setHasSavedKey(true)
-    } else {
-      localStorage.removeItem('openrouter_api_key')
-      setHasSavedKey(Boolean(import.meta.env?.VITE_OPENROUTER_API_KEY))
-    }
-    setShowKeyModal(false)
-    setCustomKeyInput('')
   }
 
   const handleModelChange = (model: string) => {
@@ -303,61 +282,7 @@ export function AIChatPage() {
             <span>{opt.title}</span>
           </button>
         ))}
-
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            className={`context-pill key-config-pill ${hasSavedKey ? 'key-configured' : 'key-missing'}`}
-            onClick={() => {
-              setCustomKeyInput(localStorage.getItem('openrouter_api_key') || '')
-              setShowKeyModal(true)
-            }}
-            title="Configure OpenRouter API Key"
-          >
-            <span>{hasSavedKey ? '🔑 API Key Active' : '⚙️ Set API Key'}</span>
-          </button>
-        </div>
       </div>
-
-      {/* API Key Modal */}
-      {showKeyModal && (
-        <div className="api-key-modal-overlay" onClick={() => setShowKeyModal(false)}>
-          <div className="api-key-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="api-key-modal-header">
-              <h3>🔑 OpenRouter AI Configuration</h3>
-              <button className="modal-close-btn" onClick={() => setShowKeyModal(false)}>✕</button>
-            </div>
-            <p className="api-key-modal-desc">
-              Connect your free OpenRouter API key so Chart Rabbit AI co-pilot can run directly in your browser.
-            </p>
-            <div className="api-key-modal-input-group">
-              <label>OpenRouter API Key (sk-or-v1-...)</label>
-              <input
-                type="password"
-                placeholder="sk-or-v1-..."
-                value={customKeyInput}
-                onChange={(e) => setCustomKeyInput(e.target.value)}
-                className="api-key-modal-input"
-              />
-            </div>
-            <div className="api-key-modal-footer">
-              <button
-                className="modal-btn-secondary"
-                onClick={() => {
-                  setCustomKeyInput('')
-                  localStorage.removeItem('openrouter_api_key')
-                  setHasSavedKey(Boolean(import.meta.env?.VITE_OPENROUTER_API_KEY))
-                  setShowKeyModal(false)
-                }}
-              >
-                Clear Key
-              </button>
-              <button className="modal-btn-primary" onClick={handleSaveApiKey}>
-                Save Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Conversation Scroll View */}
       <div className="chat-messages-container">
