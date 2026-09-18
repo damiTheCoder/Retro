@@ -4,6 +4,16 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'import.meta.env.VITE_OPENROUTER_API_KEY': JSON.stringify(
+      process.env.OPENROUTER_API_KEY ||
+      process.env.openrouter ||
+      process.env.OPENROUTER ||
+      process.env.VITE_OPENROUTER_API_KEY ||
+      process.env.openrouter_api_key ||
+      ''
+    ),
+  },
   server: {
     proxy: {
       '/api': {

@@ -159,28 +159,29 @@ export function AIChatPage({ onNavigateToPage }: AIChatPageProps) {
       let reply: string | null = null
       let apiError: string | null = null
 
-      // 1. Try backend chat API first (runs on Vercel serverless with process.env key)
+      // 1. Try direct OpenRouter client call first (fastest, full tool-calling)
       try {
-        const res = await sendChatMessageApi(currentThread.id, text, activePageContext)
-        if (res && (res as any).text) {
-          reply = (res as any).text
-        }
-      } catch (backendErr: any) {
-        apiError = backendErr?.message || String(backendErr)
-        console.warn('Backend chat API failed:', apiError)
+        const history = (currentThread.messages || []).map((m) => ({
+          role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
+          content: m.text,
+        }))
+        reply = await generateClientAiResponse(history, activePageContext)
+      } catch (clientAiErr: any) {
+        apiError = clientAiErr?.message || String(clientAiErr)
+        console.warn('Direct OpenRouter call failed, attempting backend serverless API:', apiError)
       }
 
-      // 2. If backend is unavailable, invoke direct OpenRouter client call
+      // 2. If direct call failed, try backend serverless /api/chat
       if (!reply) {
         try {
-          const history = (currentThread.messages || []).map((m) => ({
-            role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
-            content: m.text,
-          }))
-          reply = await generateClientAiResponse(history, activePageContext)
-        } catch (clientAiErr: any) {
-          console.warn('Direct OpenRouter call failed:', clientAiErr)
-          if (!apiError) apiError = clientAiErr?.message || String(clientAiErr)
+          const res = await sendChatMessageApi(currentThread.id, text, activePageContext)
+          if (res && (res as any).text) {
+            reply = (res as any).text
+          }
+        } catch (backendErr: any) {
+          const beErr = backendErr?.message || String(backendErr)
+          apiError = `${apiError ? `${apiError} | ` : ''}Backend: ${beErr}`
+          console.warn('Backend chat API also failed:', beErr)
         }
       }
 
@@ -190,7 +191,7 @@ export function AIChatPage({ onNavigateToPage }: AIChatPageProps) {
         addMessageToThread(
           currentThread.id,
           'ai',
-          `⚠️ OpenRouter API Notice: Could not connect to OpenRouter with model Nex 2.5 Pro.\n\nError details: ${apiError || 'Missing API Key'}\n\nPlease verify in your Vercel Dashboard that your environment variable is added under OPENROUTER_API_KEY, and trigger a quick Redeploy in Vercel so the environment variable takes effect.`
+          `⚠️ OpenRouter Notice: Could not connect to OpenRouter with Nex 2.5 Pro.\n\nError details: ${apiError || 'Missing API key'}\n\nPlease ensure your OpenRouter API key is set in Vercel Environment Variables as OPENROUTER_API_KEY, and trigger a Redeploy in Vercel so the key is injected.`
         )
       }
     } catch (err: any) {
